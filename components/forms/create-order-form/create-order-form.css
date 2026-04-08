@@ -1,0 +1,11 @@
+.tables-container {
+  display: flex;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+
+th, td {
+  padding: 8px;
+  text-align: left;
+}

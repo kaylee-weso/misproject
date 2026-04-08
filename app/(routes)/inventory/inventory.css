@@ -1,0 +1,14 @@
+.inventory-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.2rem;
+  padding:50px;
+  
+}
+
+.page-header {
+  font-size:x-large;
+  color:#2f3e46;
+}
+

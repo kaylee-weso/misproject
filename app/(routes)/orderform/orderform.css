@@ -1,0 +1,111 @@
+
+.table-container {
+  display: flex;
+  justify-content: center;
+  font-family:Arial, Helvetica, sans-serif;
+  color: black;
+  width:100%;
+  overflow: hidden;
+  border-radius: 15px;
+  background-color: #efefef;
+  margin: 1rem auto;
+}
+
+.orderform-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.orderform-table td:first-child,
+.orderform-table th:first-child {
+  padding-left: 20px;
+}
+
+.orderform-table td:last-child,
+.orderform-table th:last-child {
+  padding-right: 20px;
+}
+
+.orderform-table th:nth-child(1),
+.orderform-table td:nth-child(1) { width: 100px; }
+
+.orderform-table th:nth-child(2),
+.orderform-table td:nth-child(2) { width: 115px; }
+
+.orderform-table th:nth-child(3),
+.orderform-table td:nth-child(3) { width: 115px; }
+
+.orderform-table th:nth-child(4),
+.orderform-table td:nth-child(4) { width: 115px; }
+
+.orderform-table th:nth-child(5),
+.orderform-table td:nth-child(5) { width: 100px; }
+
+.orderform-table th:nth-child(6),
+.orderform-table td:nth-child(6) { width: 115px; }
+
+.orderform-table th:nth-child(7),
+.orderform-table td:nth-child(7) { width: 115px; }
+
+.orderform-table thead {
+  text-align: left;
+  font-size: 13px;
+  box-shadow: inset 0px -1px 0 rgba(0,0,0,0.15);
+  color:#2f3e46;
+}
+
+.orderform-table th, .orderform-table td {
+  padding: 0.5rem;
+}
+
+.orderform-table tbody tr{
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden; 
+  text-overflow: ellipsis;
+}
+
+.orderform-table tbody tr:nth-child(odd) {
+  background-color: rgb(221, 221, 221);
+}
+
+.pagination {
+  display: flex;
+  justify-content: end;
+  align-content: end;
+  margin-top: 1rem;
+  margin-right: 1rem;
+}
+
+.pagination button {
+  cursor: pointer;
+}
+
+.create-order-form{
+  display: flex;
+  width: 220px;
+  height: 43px;
+  box-sizing: border-box;
+  border-radius: 15px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border: 1px solid rgb(200, 200, 200);
+  background-color: #2f3e46;
+  color: rgb(200, 200, 200);
+}
+
+.create-order-form:hover{
+  background-color: #7f7f7f;
+  cursor: pointer;
+  transition: color 0.2s ease;
+
+}
+
+.plus {
+  width: 18px;
+  height: 18px;
+}
+

@@ -1,0 +1,77 @@
+.navbar {
+  width: 250px;          /* or whatever fixed width */
+  min-height: 100%;
+  flex-shrink: 0;
+  height:auto;        /* prevent shrinking */
+}
+
+/* Right-side container: header + content */
+.right-side-view {
+  display: flex;
+  flex-direction: column; /* header on top, main content below */
+  flex: 1;
+  min-width: 0;           /* important for proper flex shrinking */
+}
+
+
+.logo {
+  display:flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+
+.navigation {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1.5rem;
+  margin-left: 1rem;
+  gap: 16px;
+  font-size: medium;
+}
+
+.nav-row:hover .nav-item,
+.nav-row:hover svg {
+  color: rgb(200, 200, 200);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.nav-subitem:hover {
+  color: rgb(200, 200, 200);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.dashboard, .inventory, .orderform, .review, .facilitymap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 70px;
+}
+
+.expand-icon {
+  width: 18px;
+  transition: transform 0.2s ease;
+}
+
+.rotate {
+  transform: rotate(180deg);
+}
+
+.submenu {
+  display: flex;
+  flex-direction: column;
+  padding-left: 35px;
+  font-size: 14px;
+  gap: 0.5rem;
+}
