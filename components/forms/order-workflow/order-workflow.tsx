@@ -8,15 +8,9 @@ import Table from "@/components/ui/table";
 import { useServerTable, Column } from "@/lib/hooks/useServerTable";
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSeparator, FieldSet } from "@/components/ui/field";
 import { TextInput } from "@/components/ui/textinput";
-import { DatePickerInput } from "@/components/ui/datepickerinput";
 import { getFirstIncompleteStep } from "@/lib/service/normalizeOrder";
-import {
-  Combobox,
-  ComboboxInput,
-  ComboboxContent,
-  ComboboxList,
-  ComboboxItem,
-} from "@/components/ui/combobox";
+import AppCombobox from "@/components/ui/app-combobox";
+import { DatePickerInput2 } from "@/components/ui/datepickerinput2";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import MapComponent from "@/components/map/map";
 
@@ -42,12 +36,7 @@ export default function OrderWorkflow({ orderId, formData, setFormData, initialS
   const [addressOpen, setAddressOpen] = useState(false);
   const addressRef = useRef<HTMLInputElement>(null);
 
-
-
-  // -------------------------
-  // Load last step for this order from context
-  // -------------------------
-   useEffect(() => {
+  useEffect(() => {
     if (!orderId) return;
     const loadFields = async () => {
       try {
@@ -62,15 +51,10 @@ export default function OrderWorkflow({ orderId, formData, setFormData, initialS
     loadFields();
   }, [orderId]);
 
-
   const setStep = (s: number) => {
     setStepState(s);
   };
 
-  
-  // -------------------------
-  // Server table hook
-  // -------------------------
   const fetchAssetsTable = async ({ filters, sortKey, sortDirection }: any) => {
     if (!orderId) return { data: [], total: 0, filterOptions: {} };
     const res = await fetchOrderAssets({ orderId, filters, sortKey, sortDirection });
@@ -91,35 +75,18 @@ export default function OrderWorkflow({ orderId, formData, setFormData, initialS
     { key: "type_name", label: "Type", sortable: true, filterable: true },
   ];
 
-  // -------------------------
-  // Step conditions
-  // -------------------------
   const canSchedule = formData.company && formData.address && formData.scheduledPickupDate;
   const canConfirm = formData.actualPickupDate && formData.vendorOrderId && formData.pickupContact && custodyConfirmed;
   const canComplete = orderCompleted && pdfFile;
 
-  // -------------------------
-  // Handlers with confirmation
-  // -------------------------
   const handleSchedule = async () => {
     if (!canSchedule || !orderId) return;
     if (!window.confirm("Are you sure you want to schedule this pickup?")) return;
 
     try {
-      await scheduleOrderRequest(
-        orderId,
-        assets, // assets here if needed
-        1, // userId placeholder
-        formData.scheduledPickupDate,
-        formData.address
-      );
+      await scheduleOrderRequest(orderId, assets, 1, formData.scheduledPickupDate, formData.address);
 
-      const updatedFormData = { 
-        ...formData, 
-        company: formData.company, 
-        address: formData.address, 
-        scheduledPickupDate: formData.scheduledPickupDate 
-      };
+      const updatedFormData = { ...formData };
       setFormData(updatedFormData);
 
       const nextStep = getFirstIncompleteStep(updatedFormData);
@@ -128,81 +95,48 @@ export default function OrderWorkflow({ orderId, formData, setFormData, initialS
       console.error(err);
       alert("Failed to schedule pickup.");
     }
-
   };
 
-const handleConfirm = async () => {
-  if (!canConfirm || !orderId) return;
-  if (!window.confirm("Are you sure you want to confirm asset transfer?")) return;
+  const handleConfirm = async () => {
+    if (!canConfirm || !orderId) return;
+    if (!window.confirm("Are you sure you want to confirm asset transfer?")) return;
 
-  try {
-    await confirmAssetTransferRequest(
-      orderId,
-      assets, // assets here if needed
-      1, // userId placeholder
-      formData.actualPickupDate,
-      formData.vendorOrderId,
-      formData.pickupContact,
-      formData.notes
-    );
+    try {
+      await confirmAssetTransferRequest(orderId, assets, 1, formData.actualPickupDate, formData.vendorOrderId, formData.pickupContact, formData.notes);
 
-    const updatedFormData = {
-      ...formData,
-      actualPickupDate: formData.actualPickupDate,
-      vendorOrderId: formData.vendorOrderId,
-      pickupContact: formData.pickupContact,
-      notes: formData.notes,
-    };
-    setFormData(updatedFormData);
+      const updatedFormData = { ...formData };
+      setFormData(updatedFormData);
 
-    const nextStep = getFirstIncompleteStep(updatedFormData);
-    setStep(nextStep);
-  } catch (err) {
-    console.error(err);
-    alert("Failed to confirm asset transfer.");
-  }
-
-};
-
-
+      const nextStep = getFirstIncompleteStep(updatedFormData);
+      setStep(nextStep);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to confirm asset transfer.");
+    }
+  };
 
   const handleComplete = async () => {
-  if (!canComplete || !orderId) return;
-  if (!window.confirm("Are you sure you want to mark this order as completed?")) return;
+    if (!canComplete || !orderId) return;
+    if (!window.confirm("Are you sure you want to mark this order as completed?")) return;
 
-  try {
-    const completedDate = new Date().toISOString(); // automatically set current date/time
+    try {
+      const completedDate = new Date().toISOString();
+      await completeOrderRequest(orderId, assets, 1, completedDate, formData.certificateReceived);
 
-    await completeOrderRequest(
-      orderId, 
-      assets,
-      1, // userId placeholder
-      completedDate, // use automatically set date
-      formData.certificateReceived
-    );
+      const updatedFormData = { ...formData, completedDate };
+      setFormData(updatedFormData);
 
-    const updatedFormData = { 
-      ...formData, 
-      completedDate, // update formData with automatic date
-      certificateReceived: formData.certificateReceived 
-    };
-    setFormData(updatedFormData);
+      const nextStep = getFirstIncompleteStep(updatedFormData);
+      setStep(nextStep);
+      alert("Order completed!");
 
-    const nextStep = getFirstIncompleteStep(updatedFormData);
-    setStep(nextStep);
-    alert("Order completed!");
+      router.push("/orderform");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to complete the order.");
+    }
+  };
 
-    // Redirect to orderform
-    router.push("/orderform");
-  } catch (err) {
-    console.error(err);
-    alert("Failed to complete the order.");
-  }
-};
-
-  // -------------------------
-  // Render
-  // -------------------------
   if (!orderId) return <p>Loading order...</p>;
 
   return (
@@ -212,26 +146,24 @@ const handleConfirm = async () => {
         <FieldLegend className="ml-3 text-lg font-semibold mb-6">Order Assets</FieldLegend>
         <div className="flex justify-end mb-2">
           {(Object.keys(filters).length > 0 || sortKey || sortDirection) && (
-            <button className="btn-outline cursor-pointer hover:underline transition" onClick={clearAll}>
-              Clear All
-            </button>
+            <button className="btn-outline cursor-pointer hover:underline transition" onClick={clearAll}>Clear All</button>
           )}
         </div>
         <ScrollArea className="h-[300px] w-full rounded-md">
           <Table
-          columns={assetColumns}
-          data={assets}
-          filters={filters}
-          globalFilterOptions={{}}
-          onFilterChange={setFilters}
-          sortKey={sortKey}
-          sortDirection={sortDirection}
-          onSortChange={(key) => {
-            if (sortKey === key) setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-            else { setSortKey(key); setSortDirection("asc"); }
-          }}
-          rowKey="asset_id"
-        />
+            columns={assetColumns}
+            data={assets}
+            filters={filters}
+            globalFilterOptions={{}}
+            onFilterChange={setFilters}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSortChange={(key) => {
+              if (sortKey === key) setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+              else { setSortKey(key); setSortDirection("asc"); }
+            }}
+            rowKey="asset_id"
+          />
         </ScrollArea>
       </FieldSet>
 
@@ -249,82 +181,42 @@ const handleConfirm = async () => {
                 <div className="mt-20 space-y-10">
                   <Field>
                     <FieldLabel>Company</FieldLabel>
-                    <Combobox
+                    <AppCombobox
+                      options={Array.from(new Set(workflowFields.facilities.map(f => f.Company))).map(c => ({ value: c, label: c }))}
                       value={workflowFields.facilities.find(f => f.Company === formData.company)?.Company || ""}
-                      onValueChange={(val) => {
+                      onChange={(val) => {
                         const selected = workflowFields.facilities.find(f => f.Company === val);
                         setFormData({ ...formData, company: selected?.Company || "", address: "" });
                         setCompanyOpen(false);
-                        companyRef.current?.blur();
                       }}
+                      placeholder="Select company"
+                      disabled={false}
+                      filter={companyFilter}
+                      setFilter={setCompanyFilter}
                       open={companyOpen}
-                      onOpenChange={setCompanyOpen}
-                    >
-                      <ComboboxInput
-                        ref={companyRef}
-                        placeholder="Select company"
-                        showTrigger
-                        showClear
-                        onChange={(e) => setCompanyFilter(e.target.value)}
-                        onFocus={() => setCompanyOpen(true)}
-                      />
-                      <ComboboxContent>
-                        <ComboboxList>
-                          {Array.from(new Set(workflowFields.facilities.map(f => f.Company)))
-                            .filter(c => c.toLowerCase().includes(companyFilter.toLowerCase()))
-                            .map((c) => (
-                              <ComboboxItem key={c} value={c}>
-                                {c}
-                              </ComboboxItem>
-                            ))}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
+                      setOpen={setCompanyOpen}
+                    />
                   </Field>
                   <Field>
                     <FieldLabel>Address</FieldLabel>
-                    <Combobox
-                      value={
-                        workflowFields.facilities.find(f => f.facility_id === formData.address)?.Full_Address || ""
-                      }
-                      onValueChange={(val) => {
-                        const selected = workflowFields.facilities.find(f => f.Full_Address === val);
-                        setFormData({ ...formData, address: selected?.facility_id || "" });
-                        setAddressOpen(false);
-                        addressRef.current?.blur();
-                      }}
-                      open={addressOpen}
-                      onOpenChange={setAddressOpen}
+                    <AppCombobox
+                      options={workflowFields.facilities
+                        .filter(f => f.Company === formData.company)
+                        .map(f => ({ value: f.facility_id, label: f.Full_Address }))}
+                      value={formData.address || ""}
+                      onChange={(val) => setFormData({ ...formData, address: val })}
+                      placeholder="Select address"
                       disabled={!formData.company}
-                    >
-                      <ComboboxInput
-                        ref={addressRef}
-                        placeholder="Select address"
-                        showTrigger
-                        showClear
-                        disabled={!formData.company}
-                        onChange={(e) => setAddressFilter(e.target.value)}
-                        onFocus={() => formData.company && setAddressOpen(true)}
-                      />
-                      <ComboboxContent>
-                        <ComboboxList>
-                          {workflowFields.facilities
-                            .filter(f => f.Company === formData.company)
-                            .map(f => f.Full_Address)
-                            .filter(addr => addr.toLowerCase().includes(addressFilter.toLowerCase()))
-                            .map(addr => (
-                              <ComboboxItem key={addr} value={addr}>
-                                {addr}
-                              </ComboboxItem>
-                            ))}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
+                      filter={addressFilter}
+                      setFilter={setAddressFilter}
+                      open={addressOpen}
+                      setOpen={setAddressOpen}
+                    />
                   </Field>
                   <Field>
                     <FieldLabel>Scheduled Pickup Date</FieldLabel>
-                    <DatePickerInput
-                      value={formData.scheduledPickupDate || null}
+                    <DatePickerInput2
+                      value={formData.scheduledPickupDate || ""}
                       onChange={(v) => setFormData({ ...formData, scheduledPickupDate: v })}
                     />
                   </Field>
@@ -334,7 +226,7 @@ const handleConfirm = async () => {
                 </div>
               </div>
             )}
-            </div>
+          </div>
           <Button onClick={handleSchedule} disabled={!canSchedule} className="mt-4">Schedule</Button>
         </FieldSet>
       </div>
@@ -351,8 +243,8 @@ const handleConfirm = async () => {
                 <div className="space-y-10">
                   <Field>
                     <FieldLabel>Actual Pickup Date</FieldLabel>
-                    <DatePickerInput
-                      value={formData.actualPickupDate || null}
+                    <DatePickerInput2
+                      value={formData.actualPickupDate || ""}
                       onChange={(v) => setFormData({ ...formData, actualPickupDate: v })}
                     />
                   </Field>
