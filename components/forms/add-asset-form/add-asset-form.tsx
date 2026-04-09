@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation"; // <- added for navigation
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -41,13 +41,8 @@ type Props = {
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 };
 
-export default function AddAssetForm({
-  formData,
-  setFormData,
-  formOptions,
-  onSubmit,
-}: Props) {
-  const router = useRouter(); // initialize router
+export default function AddAssetForm({ formData, setFormData, formOptions, onSubmit }: Props) {
+  const router = useRouter();
 
   const selectedAssetType = formOptions.assetTypes.find(
     (a: any) => a.asset_type_id === Number(formData.assetType)
@@ -55,212 +50,124 @@ export default function AddAssetForm({
 
   const isAssignable = isAssetAssignable(selectedAssetType);
 
-  // --- Option arrays ---
-  const vendorOptions = formOptions.vendors.map((v: any) => ({
-    value: String(v.vendor_id),
-    label: v.vendor_name,
-  }));
-
-  const assetTypeOptions = formOptions.assetTypes.map((a: any) => ({
-    value: String(a.asset_type_id),
-    label: a.type_name,
-  }));
-
-  const userOptions = formOptions.users.map((u: any) => ({
-    value: String(u.user_id),
-    label: `${u.firstname} ${u.lastname}`,
-  }));
-
-  const departmentOptions = formOptions.departments.map((d: any) => ({
-    value: String(d.department_id),
-    label: d.department_name,
-  }));
-
-  const locationOptions = formOptions.locations.map((l: any) => ({
-    value: String(l.location_id),
-    label: l.location_name,
-  }));
+  // --- Options ---
+  const vendorOptions = formOptions.vendors.map((v: any) => ({ value: String(v.vendor_id), label: v.vendor_name }));
+  const assetTypeOptions = formOptions.assetTypes.map((a: any) => ({ value: String(a.asset_type_id), label: a.type_name }));
+  const userOptions = formOptions.users.map((u: any) => ({ value: String(u.user_id), label: `${u.firstname} ${u.lastname}` }));
+  const departmentOptions = formOptions.departments.map((d: any) => ({ value: String(d.department_id), label: d.department_name }));
+  const locationOptions = formOptions.locations.map((l: any) => ({ value: String(l.location_id), label: l.location_name }));
 
   // --- Filter & open states ---
   const [vendorFilter, setVendorFilter] = useState("");
   const [vendorOpen, setVendorOpen] = useState(false);
-  const vendorRef = useRef<HTMLInputElement>(null);
+  const vendorRef = useRef<HTMLDivElement>(null);
 
   const [assetTypeFilter, setAssetTypeFilter] = useState("");
   const [assetTypeOpen, setAssetTypeOpen] = useState(false);
-  const assetTypeRef = useRef<HTMLInputElement>(null);
+  const assetTypeRef = useRef<HTMLDivElement>(null);
 
   const [userFilter, setUserFilter] = useState("");
   const [userOpen, setUserOpen] = useState(false);
-  const userRef = useRef<HTMLInputElement>(null);
+  const userRef = useRef<HTMLDivElement>(null);
 
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [departmentOpen, setDepartmentOpen] = useState(false);
-  const departmentRef = useRef<HTMLInputElement>(null);
+  const departmentRef = useRef<HTMLDivElement>(null);
 
   const [locationFilter, setLocationFilter] = useState("");
   const [locationOpen, setLocationOpen] = useState(false);
-  const locationRef = useRef<HTMLInputElement>(null);
+  const locationRef = useRef<HTMLDivElement>(null);
 
-  // --- Cancel handler ---
   const handleCancel = () => {
-    const confirmCancel = window.confirm("Are you sure you want to cancel adding an asset?");
-    if (!confirmCancel) return;
-
-    // Reset form data
-    setFormData({
-      serialNumber: "",
-      vendor: "",
-      modelName: "",
-      assetType: "",
-      assignedTo: "",
-      department: "",
-      location: "",
-      purchaseDate: null,
-    });
-
-    // Reset filters and close comboboxes
-    setVendorFilter("");
-    setVendorOpen(false);
-    setAssetTypeFilter("");
-    setAssetTypeOpen(false);
-    setUserFilter("");
-    setUserOpen(false);
-    setDepartmentFilter("");
-    setDepartmentOpen(false);
-    setLocationFilter("");
-    setLocationOpen(false);
-
+    if (!window.confirm("Are you sure you want to cancel adding an asset?")) return;
+    setFormData({ serialNumber: "", vendor: "", modelName: "", assetType: "", assignedTo: "", department: "", location: "", purchaseDate: null });
+    setVendorFilter(""); setVendorOpen(false);
+    setAssetTypeFilter(""); setAssetTypeOpen(false);
+    setUserFilter(""); setUserOpen(false);
+    setDepartmentFilter(""); setDepartmentOpen(false);
+    setLocationFilter(""); setLocationOpen(false);
     router.push("/inventory");
   };
+
+  const renderCombobox = (options: any[], value: string, setValue: (v: string) => void, filter: string, setFilter: (f: string) => void, open: boolean, setOpen: (b: boolean) => void, ref: any, placeholder: string, disabled?: boolean) => (
+    <Combobox
+      value={options.find(o => o.value === value)?.label || ""}
+      onValueChange={(label) => {
+        const selected = options.find(o => o.label === label);
+        setValue(selected?.value || "");
+        setFilter("");
+        setOpen(false);
+        ref.current?.querySelector("input")?.blur();
+      }}
+      open={open}
+      onOpenChange={setOpen}
+      disabled={disabled}
+    >
+      <div ref={ref} className="relative">
+        <ComboboxInput
+          placeholder={placeholder}
+          showTrigger
+          showClear
+          disabled={disabled}
+          onChange={(e) => setFilter(e.target.value)}
+          onFocus={() => !disabled && setOpen(true)}
+        />
+      </div>
+      <ComboboxContent anchor={ref}>
+        <ComboboxList>
+          {options
+            .filter(o => o.label.toLowerCase().includes(filter.toLowerCase()))
+            .map(o => (
+              <ComboboxItem key={o.value} value={o.label}>{o.label}</ComboboxItem>
+            ))}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
 
   return (
     <div className="w-full max-w-2xl mx-auto">
       <form onSubmit={onSubmit} className="w-full bg-white rounded-xl shadow-sm p-6">
         <FieldGroup className="space-y-4">
-          {/* ---------------------- Add New Asset ---------------------- */}
+
+          {/* Add New Asset */}
           <FieldSet>
             <FieldLegend>Add New Asset</FieldLegend>
-            <FieldDescription>
-              Fill out the form below to add a new asset to the inventory.
-            </FieldDescription>
+            <FieldDescription>Fill out the form below to add a new asset to the inventory.</FieldDescription>
 
             <FieldGroup>
-              {/* Serial Number */}
               <Field>
                 <FieldLabel>Serial Number</FieldLabel>
                 <input
                   type="text"
                   placeholder="Enter Serial number"
                   value={formData.serialNumber}
-                  onChange={(e) =>
-                    setFormData({ ...formData, serialNumber: e.target.value })
-                  }
+                  onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
                   required
                   className="border rounded-[10px] px-3 py-1.25 w-full text-sm font-sans focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 />
               </Field>
 
               <div className="grid grid-cols-3 gap-4">
-                {/* Vendor */}
                 <Field>
                   <FieldLabel>Manufacturer</FieldLabel>
-                  <Combobox
-                    value={
-                      vendorOptions.find((o: any) => o.value === formData.vendor)?.label || ""
-                    }
-                    onValueChange={(val) => {
-                      const selected = vendorOptions.find((o: any) => o.label === val);
-                      setFormData({ ...formData, vendor: selected?.value || "" });
-                      setVendorOpen(false);
-                      vendorRef.current?.blur();
-                    }}
-                    open={vendorOpen}
-                    onOpenChange={setVendorOpen}
-                  >
-                    <ComboboxInput
-                      ref={vendorRef}
-                      placeholder="Select vendor"
-                      showTrigger
-                      showClear
-                      onChange={(e) => setVendorFilter(e.target.value)}
-                      onFocus={() => setVendorOpen(true)}
-                    />
-                    <ComboboxContent anchor={vendorRef}>
-                      <ComboboxList>
-                        {vendorOptions
-                          .filter((o: any) =>
-                            o.label.toLowerCase().includes(vendorFilter.toLowerCase())
-                          )
-                          .map((o: any) => (
-                            <ComboboxItem key={o.value} value={o.label}>
-                              {o.label}
-                            </ComboboxItem>
-                          ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                  {renderCombobox(vendorOptions, formData.vendor, (v) => setFormData({ ...formData, vendor: v }), vendorFilter, setVendorFilter, vendorOpen, setVendorOpen, vendorRef, "Select vendor")}
                 </Field>
 
-                {/* Model Name */}
                 <Field>
                   <FieldLabel>Model Name</FieldLabel>
                   <input
                     type="text"
                     placeholder="Model Name"
                     value={formData.modelName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, modelName: e.target.value })
-                    }
+                    onChange={e => setFormData({ ...formData, modelName: e.target.value })}
                     className="border rounded-[10px] px-3 py-1.25 w-full text-sm font-sans focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                   />
                 </Field>
 
-                {/* Asset Type */}
                 <Field>
                   <FieldLabel>Asset Type</FieldLabel>
-                  <Combobox
-                    value={
-                      assetTypeOptions.find((o: any) => o.value === formData.assetType)?.label ||
-                      ""
-                    }
-                    onValueChange={(val) => {
-                      const selected = assetTypeOptions.find((o: any) => o.label === val);
-                      setFormData({
-                        ...formData,
-                        assetType: selected?.value || "",
-                        assignedTo: "",
-                        department: "",
-                        location: "",
-                      });
-                      setAssetTypeOpen(false);
-                      assetTypeRef.current?.blur();
-                    }}
-                    open={assetTypeOpen}
-                    onOpenChange={setAssetTypeOpen}
-                  >
-                    <ComboboxInput
-                      ref={assetTypeRef}
-                      placeholder="Select asset type"
-                      showTrigger
-                      showClear
-                      onChange={(e) => setAssetTypeFilter(e.target.value)}
-                      onFocus={() => setAssetTypeOpen(true)}
-                    />
-                    <ComboboxContent anchor={assetTypeRef}>
-                      <ComboboxList>
-                        {assetTypeOptions
-                          .filter((o: any) =>
-                            o.label.toLowerCase().includes(assetTypeFilter.toLowerCase())
-                          )
-                          .map((o: any) => (
-                            <ComboboxItem key={o.value} value={o.label}>
-                              {o.label}
-                            </ComboboxItem>
-                          ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                  {renderCombobox(assetTypeOptions, formData.assetType, (v) => setFormData({ ...formData, assetType: v, assignedTo: "", department: "", location: "" }), assetTypeFilter, setAssetTypeFilter, assetTypeOpen, setAssetTypeOpen, assetTypeRef, "Select asset type")}
                 </Field>
               </div>
             </FieldGroup>
@@ -268,153 +175,39 @@ export default function AddAssetForm({
 
           <FieldSeparator />
 
-          {/* ---------------------- Assignment Information ---------------------- */}
+          {/* Assignment Information */}
           <FieldSet>
             <FieldLegend>Assignment Information</FieldLegend>
             <FieldDescription>Enter assignment details for this asset.</FieldDescription>
 
             <FieldGroup>
-              {/* Assigned To */}
               <Field>
                 <FieldLabel>Assigned To</FieldLabel>
-                <Combobox
-                  value={
-                    userOptions.find((o: any) => o.value === formData.assignedTo)?.label || ""
-                  }
-                  onValueChange={(val) => {
-                    const user = userOptions.find((o: any) => o.label === val);
-                    if (user) {
-                      setFormData({
-                        ...formData,
-                        assignedTo: user.value,
-                        department: String(
-                          formOptions.users.find((u: any) => String(u.user_id) === user.value)
-                            ?.department_id || ""
-                        ),
-                        location: String(
-                          formOptions.users.find((u: any) => String(u.user_id) === user.value)
-                            ?.primary_location_id || ""
-                        ),
-                      });
-                    } else {
-                      setFormData({ ...formData, assignedTo: "", department: "", location: "" });
-                    }
-                    setUserOpen(false);
-                    userRef.current?.blur();
-                  }}
-                  open={userOpen}
-                  onOpenChange={setUserOpen}
-                  disabled={!isAssignable}
-                >
-                  <ComboboxInput
-                    ref={userRef}
-                    placeholder="Select user"
-                    showTrigger
-                    showClear
-                    disabled={!isAssignable}
-                    onChange={(e) => setUserFilter(e.target.value)}
-                    onFocus={() => isAssignable && setUserOpen(true)}
-                  />
-                  <ComboboxContent anchor={userRef}>
-                    <ComboboxList>
-                      {userOptions
-                        .filter((o: any) =>
-                          o.label.toLowerCase().includes(userFilter.toLowerCase())
-                        )
-                        .map((o: any) => (
-                          <ComboboxItem key={o.value} value={o.label}>
-                            {o.label}
-                          </ComboboxItem>
-                        ))}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
+                {renderCombobox(
+                  userOptions,
+                  formData.assignedTo,
+                  (v) => {
+                    const user = userOptions.find((u: any) => u.value === v);
+                    setFormData({
+                      ...formData,
+                      assignedTo: v,
+                      department: user ? String(formOptions.users.find((u: any) => String(u.user_id) === v)?.department_id || "") : "",
+                      location: user ? String(formOptions.users.find((u: any) => String(u.user_id) === v)?.primary_location_id || "") : "",
+                    });
+                  },
+                  userFilter, setUserFilter, userOpen, setUserOpen, userRef, "Select user", !isAssignable
+                )}
               </Field>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Department */}
                 <Field>
                   <FieldLabel>Department</FieldLabel>
-                  <Combobox
-                    value={
-                      departmentOptions.find((o: any) => o.value === formData.department)?.label ||
-                      ""
-                    }
-                    onValueChange={(val) => {
-                      const selected = departmentOptions.find((o: any) => o.label === val);
-                      setFormData({ ...formData, department: selected?.value || "" });
-                      setDepartmentOpen(false);
-                      departmentRef.current?.blur();
-                    }}
-                    open={departmentOpen}
-                    onOpenChange={setDepartmentOpen}
-                    disabled={!!formData.assignedTo}
-                  >
-                    <ComboboxInput
-                      ref={departmentRef}
-                      placeholder="Select department"
-                      showTrigger
-                      showClear
-                      disabled={!!formData.assignedTo}
-                      onChange={(e) => setDepartmentFilter(e.target.value)}
-                      onFocus={() => !formData.assignedTo && setDepartmentOpen(true)}
-                    />
-                    <ComboboxContent anchor={departmentRef}>
-                      <ComboboxList>
-                        {departmentOptions
-                          .filter((o: any) =>
-                            o.label.toLowerCase().includes(departmentFilter.toLowerCase())
-                          )
-                          .map((o: any) => (
-                            <ComboboxItem key={o.value} value={o.label}>
-                              {o.label}
-                            </ComboboxItem>
-                          ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                  {renderCombobox(departmentOptions, formData.department, (v) => setFormData({ ...formData, department: v }), departmentFilter, setDepartmentFilter, departmentOpen, setDepartmentOpen, departmentRef, "Select department", !!formData.assignedTo)}
                 </Field>
 
-                {/* Location */}
                 <Field>
                   <FieldLabel>Location</FieldLabel>
-                  <Combobox
-                    value={
-                      locationOptions.find((o: any) => o.value === formData.location)?.label || ""
-                    }
-                    onValueChange={(val) => {
-                      const selected = locationOptions.find((o: any) => o.label === val);
-                      setFormData({ ...formData, location: selected?.value || "" });
-                      setLocationOpen(false);
-                      locationRef.current?.blur();
-                    }}
-                    open={locationOpen}
-                    onOpenChange={setLocationOpen}
-                    disabled={!!formData.assignedTo}
-                  >
-                    <ComboboxInput
-                      ref={locationRef}
-                      placeholder="Select location"
-                      showTrigger
-                      showClear
-                      disabled={!!formData.assignedTo}
-                      onChange={(e) => setLocationFilter(e.target.value)}
-                      onFocus={() => !formData.assignedTo && setLocationOpen(true)}
-                    />
-                    <ComboboxContent anchor={locationRef}>
-                      <ComboboxList>
-                        {locationOptions
-                          .filter((o: any) =>
-                            o.label.toLowerCase().includes(locationFilter.toLowerCase())
-                          )
-                          .map((o: any) => (
-                            <ComboboxItem key={o.value} value={o.label}>
-                              {o.label}
-                            </ComboboxItem>
-                          ))}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
+                  {renderCombobox(locationOptions, formData.location, (v) => setFormData({ ...formData, location: v }), locationFilter, setLocationFilter, locationOpen, setLocationOpen, locationRef, "Select location", !!formData.assignedTo)}
                 </Field>
               </div>
             </FieldGroup>
@@ -422,7 +215,7 @@ export default function AddAssetForm({
 
           <FieldSeparator />
 
-          {/* ---------------------- Purchase Date ---------------------- */}
+          {/* Purchase Date */}
           <FieldSet>
             <FieldLegend>Date of Purchase</FieldLegend>
             <FieldDescription>Enter the date when this asset was purchased.</FieldDescription>
@@ -431,7 +224,7 @@ export default function AddAssetForm({
                 <FieldLabel>Purchase Date</FieldLabel>
                 <DatePickerInput
                   value={formData.purchaseDate}
-                  onChange={(v) => setFormData({ ...formData, purchaseDate: v })}
+                  onChange={v => setFormData({ ...formData, purchaseDate: v })}
                   placeholder="Select purchase date"
                 />
               </Field>
@@ -441,12 +234,8 @@ export default function AddAssetForm({
           <FieldSet>
             <FieldGroup>
               <div className="grid grid-cols-2 gap-4">
-                <Button type="submit" className="w-full">
-                  Submit
-                </Button>
-                <Button variant="outline" type="button" className="w-full" onClick={handleCancel}>
-                  Cancel
-                </Button>
+                <Button type="submit" className="w-full">Submit</Button>
+                <Button variant="outline" type="button" className="w-full" onClick={handleCancel}>Cancel</Button>
               </div>
             </FieldGroup>
           </FieldSet>
