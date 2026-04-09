@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +34,8 @@ const nonAssignableTypes = [
 const isAssetAssignable = (assetTypeName: string | undefined) =>
   assetTypeName ? !nonAssignableTypes.includes(assetTypeName) : true;
 
+type ComboboxOption = { value: string; label: string };
+
 type Props = {
   formData: any;
   setFormData: (data: any) => void;
@@ -41,69 +43,50 @@ type Props = {
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
 };
 
-export default function AddAssetForm({ formData, setFormData, formOptions, onSubmit }: Props) {
-  const router = useRouter();
+type ControlledComboboxProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: ComboboxOption[];
+  placeholder?: string;
+  disabled?: boolean;
+};
 
-  const selectedAssetType = formOptions.assetTypes.find(
-    (a: any) => a.asset_type_id === Number(formData.assetType)
-  )?.type_name;
+function ControlledCombobox({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+}: ControlledComboboxProps) {
+  const [display, setDisplay] = useState(
+    options.find((o) => o.value === value)?.label || ""
+  );
+  const [filter, setFilter] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const isAssignable = isAssetAssignable(selectedAssetType);
+  useEffect(() => {
+    setDisplay(options.find((o) => o.value === value)?.label || "");
+  }, [value, options]);
 
-  // --- Options ---
-  const vendorOptions = formOptions.vendors.map((v: any) => ({ value: String(v.vendor_id), label: v.vendor_name }));
-  const assetTypeOptions = formOptions.assetTypes.map((a: any) => ({ value: String(a.asset_type_id), label: a.type_name }));
-  const userOptions = formOptions.users.map((u: any) => ({ value: String(u.user_id), label: `${u.firstname} ${u.lastname}` }));
-  const departmentOptions = formOptions.departments.map((d: any) => ({ value: String(d.department_id), label: d.department_name }));
-  const locationOptions = formOptions.locations.map((l: any) => ({ value: String(l.location_id), label: l.location_name }));
-
-  // --- Filter & open states ---
-  const [vendorFilter, setVendorFilter] = useState("");
-  const [vendorOpen, setVendorOpen] = useState(false);
-  const vendorRef = useRef<HTMLDivElement>(null);
-
-  const [assetTypeFilter, setAssetTypeFilter] = useState("");
-  const [assetTypeOpen, setAssetTypeOpen] = useState(false);
-  const assetTypeRef = useRef<HTMLDivElement>(null);
-
-  const [userFilter, setUserFilter] = useState("");
-  const [userOpen, setUserOpen] = useState(false);
-  const userRef = useRef<HTMLDivElement>(null);
-
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [departmentOpen, setDepartmentOpen] = useState(false);
-  const departmentRef = useRef<HTMLDivElement>(null);
-
-  const [locationFilter, setLocationFilter] = useState("");
-  const [locationOpen, setLocationOpen] = useState(false);
-  const locationRef = useRef<HTMLDivElement>(null);
-
-  const handleCancel = () => {
-    if (!window.confirm("Are you sure you want to cancel adding an asset?")) return;
-    setFormData({ serialNumber: "", vendor: "", modelName: "", assetType: "", assignedTo: "", department: "", location: "", purchaseDate: null });
-    setVendorFilter(""); setVendorOpen(false);
-    setAssetTypeFilter(""); setAssetTypeOpen(false);
-    setUserFilter(""); setUserOpen(false);
-    setDepartmentFilter(""); setDepartmentOpen(false);
-    setLocationFilter(""); setLocationOpen(false);
-    router.push("/inventory");
-  };
-
-  const renderCombobox = (options: any[], value: string, setValue: (v: string) => void, filter: string, setFilter: (f: string) => void, open: boolean, setOpen: (b: boolean) => void, ref: any, placeholder: string, disabled?: boolean) => (
-    <Combobox
-      value={options.find(o => o.value === value)?.label || ""}
-      onValueChange={(label) => {
-        const selected = options.find(o => o.label === label);
-        setValue(selected?.value || "");
-        setFilter("");
-        setOpen(false);
-        ref.current?.querySelector("input")?.blur();
-      }}
-      open={open}
-      onOpenChange={setOpen}
-      disabled={disabled}
-    >
-      <div ref={ref} className="relative">
+  return (
+    <Field>
+      <FieldLabel>{label}</FieldLabel>
+      <Combobox
+        value={display}
+        onValueChange={(label) => {
+          const selected = options.find((o) => o.label === label);
+          onChange(selected?.value || "");
+          setDisplay(selected?.label || "");
+          setFilter("");
+          setOpen(false);
+        }}
+        open={open}
+        onOpenChange={setOpen}
+        disabled={disabled}
+      >
         <ComboboxInput
           placeholder={placeholder}
           showTrigger
@@ -112,29 +95,88 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
           onChange={(e) => setFilter(e.target.value)}
           onFocus={() => !disabled && setOpen(true)}
         />
-      </div>
-      <ComboboxContent anchor={ref}>
-        <ComboboxList>
-          {options
-            .filter(o => o.label.toLowerCase().includes(filter.toLowerCase()))
-            .map(o => (
-              <ComboboxItem key={o.value} value={o.label}>{o.label}</ComboboxItem>
-            ))}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+        <ComboboxContent anchor={ref}>
+          <ComboboxList>
+            {options
+              .filter((o) => o.label.toLowerCase().includes(filter.toLowerCase()))
+              .map((o) => (
+                <ComboboxItem key={o.value} value={o.label}>
+                  {o.label}
+                </ComboboxItem>
+              ))}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </Field>
   );
+}
+
+export default function AddAssetForm({
+  formData,
+  setFormData,
+  formOptions,
+  onSubmit,
+}: Props) {
+  const router = useRouter();
+
+  const selectedAssetType = formOptions.assetTypes.find(
+    (a: any) => a.asset_type_id === Number(formData.assetType)
+  )?.type_name;
+  const isAssignable = isAssetAssignable(selectedAssetType);
+
+  // --- Options ---
+  const vendorOptions = formOptions.vendors.map((v: any) => ({
+    value: String(v.vendor_id),
+    label: v.vendor_name,
+  }));
+
+  const assetTypeOptions = formOptions.assetTypes.map((a: any) => ({
+    value: String(a.asset_type_id),
+    label: a.type_name,
+  }));
+
+  const userOptions = formOptions.users.map((u: any) => ({
+    value: String(u.user_id),
+    label: `${u.firstname} ${u.lastname}`,
+  }));
+
+  const departmentOptions = formOptions.departments.map((d: any) => ({
+    value: String(d.department_id),
+    label: d.department_name,
+  }));
+
+  const locationOptions = formOptions.locations.map((l: any) => ({
+    value: String(l.location_id),
+    label: l.location_name,
+  }));
+
+  const handleCancel = () => {
+    if (!window.confirm("Are you sure you want to cancel adding an asset?")) return;
+
+    setFormData({
+      serialNumber: "",
+      vendor: "",
+      modelName: "",
+      assetType: "",
+      assignedTo: "",
+      department: "",
+      location: "",
+      purchaseDate: null,
+    });
+
+    router.push("/inventory");
+  };
 
   return (
     <div className="w-full max-w-2xl mx-auto">
       <form onSubmit={onSubmit} className="w-full bg-white rounded-xl shadow-sm p-6">
         <FieldGroup className="space-y-4">
-
           {/* Add New Asset */}
           <FieldSet>
             <FieldLegend>Add New Asset</FieldLegend>
-            <FieldDescription>Fill out the form below to add a new asset to the inventory.</FieldDescription>
-
+            <FieldDescription>
+              Fill out the form below to add a new asset to the inventory.
+            </FieldDescription>
             <FieldGroup>
               <Field>
                 <FieldLabel>Serial Number</FieldLabel>
@@ -142,73 +184,100 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
                   type="text"
                   placeholder="Enter Serial number"
                   value={formData.serialNumber}
-                  onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, serialNumber: e.target.value })
+                  }
                   required
                   className="border rounded-[10px] px-3 py-1.25 w-full text-sm font-sans focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 />
               </Field>
 
               <div className="grid grid-cols-3 gap-4">
-                <Field>
-                  <FieldLabel>Manufacturer</FieldLabel>
-                  {renderCombobox(vendorOptions, formData.vendor, (v) => setFormData({ ...formData, vendor: v }), vendorFilter, setVendorFilter, vendorOpen, setVendorOpen, vendorRef, "Select vendor")}
-                </Field>
-
+                <ControlledCombobox
+                  label="Manufacturer"
+                  value={formData.vendor}
+                  onChange={(val) => setFormData({ ...formData, vendor: val })}
+                  options={vendorOptions}
+                  placeholder="Select vendor"
+                />
                 <Field>
                   <FieldLabel>Model Name</FieldLabel>
                   <input
                     type="text"
                     placeholder="Model Name"
                     value={formData.modelName}
-                    onChange={e => setFormData({ ...formData, modelName: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, modelName: e.target.value })
+                    }
                     className="border rounded-[10px] px-3 py-1.25 w-full text-sm font-sans focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                   />
                 </Field>
-
-                <Field>
-                  <FieldLabel>Asset Type</FieldLabel>
-                  {renderCombobox(assetTypeOptions, formData.assetType, (v) => setFormData({ ...formData, assetType: v, assignedTo: "", department: "", location: "" }), assetTypeFilter, setAssetTypeFilter, assetTypeOpen, setAssetTypeOpen, assetTypeRef, "Select asset type")}
-                </Field>
+                <ControlledCombobox
+                  label="Asset Type"
+                  value={formData.assetType}
+                  onChange={(val) =>
+                    setFormData({
+                      ...formData,
+                      assetType: val,
+                      assignedTo: "",
+                      department: "",
+                      location: "",
+                    })
+                  }
+                  options={assetTypeOptions}
+                  placeholder="Select asset type"
+                />
               </div>
             </FieldGroup>
           </FieldSet>
 
           <FieldSeparator />
 
-          {/* Assignment Information */}
+          {/* Assignment Info */}
           <FieldSet>
             <FieldLegend>Assignment Information</FieldLegend>
             <FieldDescription>Enter assignment details for this asset.</FieldDescription>
-
             <FieldGroup>
-              <Field>
-                <FieldLabel>Assigned To</FieldLabel>
-                {renderCombobox(
-                  userOptions,
-                  formData.assignedTo,
-                  (v) => {
-                    const user = userOptions.find((u: any) => u.value === v);
+              <ControlledCombobox
+                label="Assigned To"
+                value={formData.assignedTo}
+                onChange={(val) => {
+                  const user = userOptions.find((u: any) => u.value === val);
+                  if (user) {
+                    const userObj = formOptions.users.find(
+                      (u: any) => String(u.user_id) === val
+                    );
                     setFormData({
                       ...formData,
-                      assignedTo: v,
-                      department: user ? String(formOptions.users.find((u: any) => String(u.user_id) === v)?.department_id || "") : "",
-                      location: user ? String(formOptions.users.find((u: any) => String(u.user_id) === v)?.primary_location_id || "") : "",
+                      assignedTo: val,
+                      department: String(userObj?.department_id || ""),
+                      location: String(userObj?.primary_location_id || ""),
                     });
-                  },
-                  userFilter, setUserFilter, userOpen, setUserOpen, userRef, "Select user", !isAssignable
-                )}
-              </Field>
-
+                  } else {
+                    setFormData({ ...formData, assignedTo: "", department: "", location: "" });
+                  }
+                }}
+                options={userOptions}
+                placeholder="Select user"
+                disabled={!isAssignable}
+              />
               <div className="grid grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel>Department</FieldLabel>
-                  {renderCombobox(departmentOptions, formData.department, (v) => setFormData({ ...formData, department: v }), departmentFilter, setDepartmentFilter, departmentOpen, setDepartmentOpen, departmentRef, "Select department", !!formData.assignedTo)}
-                </Field>
-
-                <Field>
-                  <FieldLabel>Location</FieldLabel>
-                  {renderCombobox(locationOptions, formData.location, (v) => setFormData({ ...formData, location: v }), locationFilter, setLocationFilter, locationOpen, setLocationOpen, locationRef, "Select location", !!formData.assignedTo)}
-                </Field>
+                <ControlledCombobox
+                  label="Department"
+                  value={formData.department}
+                  onChange={(val) => setFormData({ ...formData, department: val })}
+                  options={departmentOptions}
+                  placeholder="Select department"
+                  disabled={!!formData.assignedTo}
+                />
+                <ControlledCombobox
+                  label="Location"
+                  value={formData.location}
+                  onChange={(val) => setFormData({ ...formData, location: val })}
+                  options={locationOptions}
+                  placeholder="Select location"
+                  disabled={!!formData.assignedTo}
+                />
               </div>
             </FieldGroup>
           </FieldSet>
@@ -224,7 +293,7 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
                 <FieldLabel>Purchase Date</FieldLabel>
                 <DatePickerInput
                   value={formData.purchaseDate}
-                  onChange={v => setFormData({ ...formData, purchaseDate: v })}
+                  onChange={(v) => setFormData({ ...formData, purchaseDate: v })}
                   placeholder="Select purchase date"
                 />
               </Field>
@@ -234,8 +303,12 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
           <FieldSet>
             <FieldGroup>
               <div className="grid grid-cols-2 gap-4">
-                <Button type="submit" className="w-full">Submit</Button>
-                <Button variant="outline" type="button" className="w-full" onClick={handleCancel}>Cancel</Button>
+                <Button type="submit" className="w-full">
+                  Submit
+                </Button>
+                <Button variant="outline" type="button" className="w-full" onClick={handleCancel}>
+                  Cancel
+                </Button>
               </div>
             </FieldGroup>
           </FieldSet>
