@@ -186,7 +186,7 @@ export default function AddAssetForm({
                       onChange={(e) => setVendorFilter(e.target.value)}
                       onFocus={() => setVendorOpen(true)}
                     />
-                    <ComboboxContent>
+                    <ComboboxContent anchor={vendorRef}>
                       <ComboboxList>
                         {vendorOptions
                           .filter((o: any) =>
@@ -247,7 +247,7 @@ export default function AddAssetForm({
                       onChange={(e) => setAssetTypeFilter(e.target.value)}
                       onFocus={() => setAssetTypeOpen(true)}
                     />
-                    <ComboboxContent>
+                    <ComboboxContent anchor={assetTypeRef}>
                       <ComboboxList>
                         {assetTypeOptions
                           .filter((o: any) =>
@@ -315,7 +315,7 @@ export default function AddAssetForm({
                     onChange={(e) => setUserFilter(e.target.value)}
                     onFocus={() => isAssignable && setUserOpen(true)}
                   />
-                  <ComboboxContent>
+                  <ComboboxContent anchor={userRef}>
                     <ComboboxList>
                       {userOptions
                         .filter((o: any) =>
@@ -359,7 +359,7 @@ export default function AddAssetForm({
                       onChange={(e) => setDepartmentFilter(e.target.value)}
                       onFocus={() => !formData.assignedTo && setDepartmentOpen(true)}
                     />
-                    <ComboboxContent>
+                    <ComboboxContent anchor={departmentRef}>
                       <ComboboxList>
                         {departmentOptions
                           .filter((o: any) =>
@@ -401,7 +401,7 @@ export default function AddAssetForm({
                       onChange={(e) => setLocationFilter(e.target.value)}
                       onFocus={() => !formData.assignedTo && setLocationOpen(true)}
                     />
-                    <ComboboxContent>
+                    <ComboboxContent anchor={locationRef}>
                       <ComboboxList>
                         {locationOptions
                           .filter((o: any) =>
