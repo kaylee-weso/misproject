@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import {
   Combobox,
   ComboboxInput,
@@ -45,19 +45,26 @@ export default function AppCombobox({
 }: AppComboboxProps) {
   const ref = useRef<HTMLDivElement>(null);
 
-  const selectedOption = options.find(o => o.value === value);
+  const selectedOption = options.find((o) => o.value === value);
+
+  // If selected value changes externally, reset filter
+  useEffect(() => {
+    if (selectedOption && selectedOption.label !== filter) {
+      setFilter(selectedOption.label);
+    }
+  }, [selectedOption, setFilter]);
 
   return (
     <Combobox
       value={selectedOption?.label || ""}
       onValueChange={(label) => {
-        const selected = options.find(o => o.label === label);
+        const selected = options.find((o) => o.label === label);
         const val = selected?.value || "";
 
         onChange(val);
         if (onSelectExtra) onSelectExtra(val);
 
-        setFilter("");
+        setFilter(""); // clear filter after selection
         setOpen(false);
 
         // Fix focus issues in prod
@@ -69,12 +76,15 @@ export default function AppCombobox({
     >
       <div ref={ref} className="relative w-full">
         <ComboboxInput
-          value={selectedOption?.label || ""}
+          value={filter || selectedOption?.label || ""}
           placeholder={placeholder}
           showTrigger
           showClear
           disabled={disabled}
-          onChange={(e) => setFilter(e.target.value)}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            if (!open) setOpen(true); // open dropdown on typing
+          }}
           onFocus={() => !disabled && setOpen(true)}
         />
       </div>
@@ -82,10 +92,10 @@ export default function AppCombobox({
       <ComboboxContent anchor={ref}>
         <ComboboxList>
           {options
-            .filter(o =>
+            .filter((o) =>
               o.label.toLowerCase().includes(filter.toLowerCase())
             )
-            .map(o => (
+            .map((o) => (
               <ComboboxItem key={o.value} value={o.label}>
                 {o.label}
               </ComboboxItem>
