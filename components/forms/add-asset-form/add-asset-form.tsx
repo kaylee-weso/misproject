@@ -15,7 +15,6 @@ import {
 import { DatePickerInput2 } from "@/components/ui/datepickerinput2";
 import AppCombobox from "@/components/ui/app-combobox";
 
-
 const nonAssignableTypes = [
   "Server",
   "Printer",
@@ -29,12 +28,11 @@ const nonAssignableTypes = [
 const isAssetAssignable = (assetTypeName: string | undefined) =>
   assetTypeName ? !nonAssignableTypes.includes(assetTypeName) : true;
 
-
 type Props = {
   formData: any;
   setFormData: (data: any) => void;
   formOptions: any;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (data: any) => void; // now passes formData
 };
 
 export default function AddAssetForm({
@@ -77,7 +75,7 @@ export default function AddAssetForm({
     label: l.location_name,
   }));
 
-  // --- State (ONLY thing you manage now) ---
+  // --- State for Combobox filters ---
   const [vendorFilter, setVendorFilter] = useState("");
   const [vendorOpen, setVendorOpen] = useState(false);
 
@@ -93,6 +91,7 @@ export default function AddAssetForm({
   const [locationFilter, setLocationFilter] = useState("");
   const [locationOpen, setLocationOpen] = useState(false);
 
+  // --- Cancel handler ---
   const handleCancel = () => {
     if (!window.confirm("Are you sure you want to cancel?")) return;
 
@@ -116,10 +115,36 @@ export default function AddAssetForm({
     router.push("/inventory");
   };
 
+  // --- Custom submit handler ---
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // Custom validation
+    if (
+      !formData.serialNumber ||
+      !formData.vendor ||
+      !formData.modelName ||
+      !formData.assetType ||
+      !formData.purchaseDate
+    ) {
+      alert("Please fill out all required fields");
+      return;
+    }
+
+    // Confirmation
+    if (!window.confirm("Are you sure you want to add asset?")) return;
+
+    // Call onSubmit prop
+    onSubmit(formData);
+
+    // Redirect
+    router.push("/inventory");
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto">
       <form
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit} // use custom submit
         className="w-full bg-white rounded-xl shadow-sm p-6"
       >
         <FieldGroup className="space-y-4">
@@ -140,7 +165,6 @@ export default function AddAssetForm({
                   onChange={(e) =>
                     setFormData({ ...formData, serialNumber: e.target.value })
                   }
-                  required
                   className="border rounded-[10px] px-3 py-1.25 w-full text-sm"
                 />
               </Field>

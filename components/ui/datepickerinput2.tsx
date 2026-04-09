@@ -46,6 +46,7 @@ export function DatePickerInput2({
   return (
     <div ref={wrapperRef} className="relative w-full datepicker-wrapper">
       <Button
+        type="button" 
         variant="outline"
         className="w-full justify-start text-left font-normal"
         disabled={disabled}
