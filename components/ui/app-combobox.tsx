@@ -1,13 +1,6 @@
 "use client";
 
-import { useRef } from "react";
-import {
-  Combobox,
-  ComboboxInput,
-  ComboboxContent,
-  ComboboxList,
-  ComboboxItem,
-} from "@/components/ui/combobox";
+import { useState, useRef, useEffect } from "react";
 
 type Option = {
   value: string;
@@ -43,61 +36,67 @@ export default function AppCombobox({
   setOpen,
   onSelectExtra,
 }: AppComboboxProps) {
-  const ref = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedOption = options.find((o) => o.value === value);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [setOpen]);
+
+  // Filtered options
+  const filteredOptions = options.filter((o) =>
+    o.label.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const handleSelect = (option: Option) => {
+    onChange(option.value);
+    if (onSelectExtra) onSelectExtra(option.value);
+    setFilter("");
+    setOpen(false);
+    inputRef.current?.blur();
+  };
+
   return (
-    <Combobox
-      value={undefined} // Let input control the text, don't force label here
-      onValueChange={(label) => {
-            if (!label) return; // ignore null/undefined
+    <div ref={wrapperRef} className="relative w-full">
+      <input
+        ref={inputRef}
+        type="text"
+        value={filter || selectedOption?.label || ""}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(e) => {
+          setFilter(e.target.value);
+          if (!open) setOpen(true);
+        }}
+        onFocus={() => !disabled && setOpen(true)}
+        className="border rounded-[10px] px-3 py-1.25 w-full text-sm"
+      />
 
-            const selected = options.find((o) => o.label === label);
-            if (!selected) return; // safety check
-
-            const val = selected.value;
-
-            onChange(val);
-            if (onSelectExtra) onSelectExtra(val);
-
-            setFilter(""); // reset typing filter after selection
-            setOpen(false);
-
-            ref.current?.querySelector("input")?.blur();
-            }}
-      open={open}
-      onOpenChange={setOpen}
-      disabled={disabled}
-    >
-      <div ref={ref} className="relative w-full">
-        <ComboboxInput
-          value={filter || (selectedOption?.label ?? "")} // typing takes precedence
-          placeholder={placeholder}
-          showTrigger
-          showClear
-          disabled={disabled}
-          onChange={(e) => {
-            setFilter(e.target.value); // update filter while typing
-            if (!open) setOpen(true); // open dropdown on typing
-          }}
-          onFocus={() => !disabled && setOpen(true)}
-        />
-      </div>
-
-      <ComboboxContent anchor={ref}>
-        <ComboboxList>
-          {options
-            .filter((o) =>
-              o.label.toLowerCase().includes(filter.toLowerCase())
-            )
-            .map((o) => (
-              <ComboboxItem key={o.value} value={o.label}>
-                {o.label}
-              </ComboboxItem>
-            ))}
-        </ComboboxList>
-      </ComboboxContent>
-    </Combobox>
+      {open && filteredOptions.length > 0 && (
+        <ul className="absolute z-10 w-full mt-1 max-h-60 overflow-auto rounded-lg border bg-white shadow-lg">
+          {filteredOptions.map((option) => (
+            <li
+              key={option.value}
+              onClick={() => handleSelect(option)}
+              className="cursor-pointer px-3 py-2 hover:bg-gray-100"
+            >
+              {option.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
