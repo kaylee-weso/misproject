@@ -111,9 +111,10 @@ function ComboboxContent({
       >
         <ComboboxPrimitive.Popup
           className={cn(
-            "relative max-h-60 w-full min-w-[200px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+            "relative max-h-60 min-w-[200px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
             className
           )}
+          style={{ width: "var(--anchor-width)" }}
           {...props}
         />
       </ComboboxPrimitive.Positioner>
