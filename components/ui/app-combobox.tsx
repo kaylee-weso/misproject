@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 import {
   Combobox,
   ComboboxInput,
@@ -47,42 +47,38 @@ export default function AppCombobox({
 
   const selectedOption = options.find((o) => o.value === value);
 
-  // If selected value changes externally, reset filter
-  useEffect(() => {
-    if (selectedOption && selectedOption.label !== filter) {
-      setFilter(selectedOption.label);
-    }
-  }, [selectedOption, setFilter]);
-
   return (
     <Combobox
-      value={selectedOption?.label || ""}
+      value={undefined} // Let input control the text, don't force label here
       onValueChange={(label) => {
-        const selected = options.find((o) => o.label === label);
-        const val = selected?.value || "";
+            if (!label) return; // ignore null/undefined
 
-        onChange(val);
-        if (onSelectExtra) onSelectExtra(val);
+            const selected = options.find((o) => o.label === label);
+            if (!selected) return; // safety check
 
-        setFilter(""); // clear filter after selection
-        setOpen(false);
+            const val = selected.value;
 
-        // Fix focus issues in prod
-        ref.current?.querySelector("input")?.blur();
-      }}
+            onChange(val);
+            if (onSelectExtra) onSelectExtra(val);
+
+            setFilter(""); // reset typing filter after selection
+            setOpen(false);
+
+            ref.current?.querySelector("input")?.blur();
+            }}
       open={open}
       onOpenChange={setOpen}
       disabled={disabled}
     >
       <div ref={ref} className="relative w-full">
         <ComboboxInput
-          value={filter || selectedOption?.label || ""}
+          value={filter || (selectedOption?.label ?? "")} // typing takes precedence
           placeholder={placeholder}
           showTrigger
           showClear
           disabled={disabled}
           onChange={(e) => {
-            setFilter(e.target.value);
+            setFilter(e.target.value); // update filter while typing
             if (!open) setOpen(true); // open dropdown on typing
           }}
           onFocus={() => !disabled && setOpen(true)}
