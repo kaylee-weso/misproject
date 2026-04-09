@@ -44,10 +44,7 @@ export default function AppCombobox({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(e.target as Node)
-      ) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
@@ -68,21 +65,40 @@ export default function AppCombobox({
     inputRef.current?.blur();
   };
 
+  const handleClear = () => {
+    setFilter("");
+    onChange(""); // clear selection
+    setOpen(false);
+    inputRef.current?.focus();
+  };
+
   return (
     <div ref={wrapperRef} className="relative w-full">
-      <input
-        ref={inputRef}
-        type="text"
-        value={filter || selectedOption?.label || ""}
-        placeholder={placeholder}
-        disabled={disabled}
-        onChange={(e) => {
-          setFilter(e.target.value);
-          if (!open) setOpen(true);
-        }}
-        onFocus={() => !disabled && setOpen(true)}
-        className="border rounded-[10px] px-3 py-1.25 w-full text-sm"
-      />
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={filter || selectedOption?.label || ""}
+          placeholder={placeholder}
+          disabled={disabled}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            if (!open) setOpen(true);
+          }}
+          onFocus={() => !disabled && setOpen(true)}
+          className="border rounded-[10px] px-3 py-1.25 w-full text-sm"
+        />
+        {/* Clear button */}
+        {(filter || selectedOption) && !disabled && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            ×
+          </button>
+        )}
+      </div>
 
       {open && filteredOptions.length > 0 && (
         <ul className="absolute z-10 w-full mt-1 max-h-60 overflow-auto rounded-lg border bg-white shadow-lg">
