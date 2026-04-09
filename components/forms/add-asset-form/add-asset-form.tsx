@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,60 +51,96 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
   const isAssignable = isAssetAssignable(selectedAssetType);
 
   // --- Options ---
-  const vendorOptions = formOptions.vendors.map((v: any) => ({ value: String(v.vendor_id), label: v.vendor_name }));
-  const assetTypeOptions = formOptions.assetTypes.map((a: any) => ({ value: String(a.asset_type_id), label: a.type_name }));
-  const userOptions = formOptions.users.map((u: any) => ({ value: String(u.user_id), label: `${u.firstname} ${u.lastname}` }));
-  const departmentOptions = formOptions.departments.map((d: any) => ({ value: String(d.department_id), label: d.department_name }));
-  const locationOptions = formOptions.locations.map((l: any) => ({ value: String(l.location_id), label: l.location_name }));
+  const vendorOptions = formOptions.vendors.map((v: any) => ({
+    value: String(v.vendor_id),
+    label: v.vendor_name,
+  }));
+  const assetTypeOptions = formOptions.assetTypes.map((a: any) => ({
+    value: String(a.asset_type_id),
+    label: a.type_name,
+  }));
+  const userOptions = formOptions.users.map((u: any) => ({
+    value: String(u.user_id),
+    label: `${u.firstname} ${u.lastname}`,
+  }));
+  const departmentOptions = formOptions.departments.map((d: any) => ({
+    value: String(d.department_id),
+    label: d.department_name,
+  }));
+  const locationOptions = formOptions.locations.map((l: any) => ({
+    value: String(l.location_id),
+    label: l.location_name,
+  }));
 
-  // --- Filter & open states ---
+  // --- Filter & open states for each combobox ---
   const [vendorFilter, setVendorFilter] = useState("");
   const [vendorOpen, setVendorOpen] = useState(false);
-  const vendorRef = useRef<HTMLDivElement>(null);
 
   const [assetTypeFilter, setAssetTypeFilter] = useState("");
   const [assetTypeOpen, setAssetTypeOpen] = useState(false);
-  const assetTypeRef = useRef<HTMLDivElement>(null);
 
   const [userFilter, setUserFilter] = useState("");
   const [userOpen, setUserOpen] = useState(false);
-  const userRef = useRef<HTMLDivElement>(null);
 
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [departmentOpen, setDepartmentOpen] = useState(false);
-  const departmentRef = useRef<HTMLDivElement>(null);
 
   const [locationFilter, setLocationFilter] = useState("");
   const [locationOpen, setLocationOpen] = useState(false);
-  const locationRef = useRef<HTMLDivElement>(null);
 
   const handleCancel = () => {
     if (!window.confirm("Are you sure you want to cancel adding an asset?")) return;
-    setFormData({ serialNumber: "", vendor: "", modelName: "", assetType: "", assignedTo: "", department: "", location: "", purchaseDate: null });
+
+    setFormData({
+      serialNumber: "",
+      vendor: "",
+      modelName: "",
+      assetType: "",
+      assignedTo: "",
+      department: "",
+      location: "",
+      purchaseDate: null,
+    });
+
     setVendorFilter(""); setVendorOpen(false);
     setAssetTypeFilter(""); setAssetTypeOpen(false);
     setUserFilter(""); setUserOpen(false);
     setDepartmentFilter(""); setDepartmentOpen(false);
     setLocationFilter(""); setLocationOpen(false);
+
     router.push("/inventory");
   };
 
-  const renderCombobox = (options: any[], value: string, setValue: (v: string) => void, filter: string, setFilter: (f: string) => void, open: boolean, setOpen: (b: boolean) => void, ref: any, placeholder: string, disabled?: boolean) => (
+  // --- Generic combobox renderer ---
+  const renderCombobox = (
+    options: any[],
+    value: string,
+    setValue: (v: string) => void,
+    filter: string,
+    setFilter: (f: string) => void,
+    open: boolean,
+    setOpen: (b: boolean) => void,
+    placeholder: string,
+    disabled?: boolean,
+    onSelect?: (selectedValue: string) => void
+  ) => (
     <Combobox
       value={options.find(o => o.value === value)?.label || ""}
       onValueChange={(label) => {
         const selected = options.find(o => o.label === label);
-        setValue(selected?.value || "");
+        const val = selected?.value || "";
+        setValue(val);
+        if (onSelect) onSelect(val);
         setFilter("");
         setOpen(false);
-        ref.current?.querySelector("input")?.blur();
       }}
       open={open}
       onOpenChange={setOpen}
       disabled={disabled}
     >
-      <div ref={ref} className="relative">
+      <div className="relative">
         <ComboboxInput
+          value={options.find(o => o.value === value)?.label || ""}
           placeholder={placeholder}
           showTrigger
           showClear
@@ -113,7 +149,7 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
           onFocus={() => !disabled && setOpen(true)}
         />
       </div>
-      <ComboboxContent anchor={ref}>
+      <ComboboxContent>
         <ComboboxList>
           {options
             .filter(o => o.label.toLowerCase().includes(filter.toLowerCase()))
@@ -151,7 +187,14 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
               <div className="grid grid-cols-3 gap-4">
                 <Field>
                   <FieldLabel>Manufacturer</FieldLabel>
-                  {renderCombobox(vendorOptions, formData.vendor, (v) => setFormData({ ...formData, vendor: v }), vendorFilter, setVendorFilter, vendorOpen, setVendorOpen, vendorRef, "Select vendor")}
+                  {renderCombobox(
+                    vendorOptions,
+                    formData.vendor,
+                    (v) => setFormData({ ...formData, vendor: v }),
+                    vendorFilter, setVendorFilter,
+                    vendorOpen, setVendorOpen,
+                    "Select vendor"
+                  )}
                 </Field>
 
                 <Field>
@@ -167,7 +210,14 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
 
                 <Field>
                   <FieldLabel>Asset Type</FieldLabel>
-                  {renderCombobox(assetTypeOptions, formData.assetType, (v) => setFormData({ ...formData, assetType: v, assignedTo: "", department: "", location: "" }), assetTypeFilter, setAssetTypeFilter, assetTypeOpen, setAssetTypeOpen, assetTypeRef, "Select asset type")}
+                  {renderCombobox(
+                    assetTypeOptions,
+                    formData.assetType,
+                    (v) => setFormData({ ...formData, assetType: v, assignedTo: "", department: "", location: "" }),
+                    assetTypeFilter, setAssetTypeFilter,
+                    assetTypeOpen, setAssetTypeOpen,
+                    "Select asset type"
+                  )}
                 </Field>
               </div>
             </FieldGroup>
@@ -186,28 +236,48 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
                 {renderCombobox(
                   userOptions,
                   formData.assignedTo,
-                  (v) => {
-                    const user = userOptions.find((u: any) => u.value === v);
-                    setFormData({
-                      ...formData,
-                      assignedTo: v,
-                      department: user ? String(formOptions.users.find((u: any) => String(u.user_id) === v)?.department_id || "") : "",
-                      location: user ? String(formOptions.users.find((u: any) => String(u.user_id) === v)?.primary_location_id || "") : "",
-                    });
-                  },
-                  userFilter, setUserFilter, userOpen, setUserOpen, userRef, "Select user", !isAssignable
+                  (v) => setFormData({
+                    ...formData,
+                    assignedTo: v,
+                    department: userOptions.find((u:any) => u.value === v)
+                      ? String(formOptions.users.find((u:any) => String(u.user_id) === v)?.department_id || "")
+                      : "",
+                    location: userOptions.find((u:any) => u.value === v)
+                      ? String(formOptions.users.find((u:any) => String(u.user_id) === v)?.primary_location_id || "")
+                      : ""
+                  }),
+                  userFilter, setUserFilter,
+                  userOpen, setUserOpen,
+                  "Select user",
+                  !isAssignable
                 )}
               </Field>
 
               <div className="grid grid-cols-2 gap-4">
                 <Field>
                   <FieldLabel>Department</FieldLabel>
-                  {renderCombobox(departmentOptions, formData.department, (v) => setFormData({ ...formData, department: v }), departmentFilter, setDepartmentFilter, departmentOpen, setDepartmentOpen, departmentRef, "Select department", !!formData.assignedTo)}
+                  {renderCombobox(
+                    departmentOptions,
+                    formData.department,
+                    (v) => setFormData({ ...formData, department: v }),
+                    departmentFilter, setDepartmentFilter,
+                    departmentOpen, setDepartmentOpen,
+                    "Select department",
+                    !!formData.assignedTo
+                  )}
                 </Field>
 
                 <Field>
                   <FieldLabel>Location</FieldLabel>
-                  {renderCombobox(locationOptions, formData.location, (v) => setFormData({ ...formData, location: v }), locationFilter, setLocationFilter, locationOpen, setLocationOpen, locationRef, "Select location", !!formData.assignedTo)}
+                  {renderCombobox(
+                    locationOptions,
+                    formData.location,
+                    (v) => setFormData({ ...formData, location: v }),
+                    locationFilter, setLocationFilter,
+                    locationOpen, setLocationOpen,
+                    "Select location",
+                    !!formData.assignedTo
+                  )}
                 </Field>
               </div>
             </FieldGroup>
@@ -239,6 +309,7 @@ export default function AddAssetForm({ formData, setFormData, formOptions, onSub
               </div>
             </FieldGroup>
           </FieldSet>
+
         </FieldGroup>
       </form>
     </div>
