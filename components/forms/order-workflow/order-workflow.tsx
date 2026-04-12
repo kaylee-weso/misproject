@@ -313,7 +313,7 @@ export default function OrderWorkflow({
                   />
                 </Field>
                 </div>
-                <div className="w-full h-[220px] md:h-[260px] rounded-md overflow-hidden">
+                <div className="w-full h-[300px] md:h-[340px] rounded-md">
                   <MapComponent />
                 </div>
               </div>
