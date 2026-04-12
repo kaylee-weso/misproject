@@ -303,15 +303,13 @@ export default function OrderWorkflow({
                   />
                 </Field>
                 </div>
-                <div className="h-full min-h-[300px]">
+                <div className="w-full aspect-[4/3] min-h-[280px] max-h-[400px]">
                   <MapComponent />
                 </div>
               </div>
-              <div className="mt-6">
-                <Button onClick={handleSchedule} disabled={!canSchedule}>
-                  Schedule
-                </Button>
-              </div>
+              <Button onClick={handleSchedule} disabled={!canSchedule}>
+                Schedule
+              </Button>
             </div>
           </FieldSet>
         </div>
@@ -361,7 +359,7 @@ export default function OrderWorkflow({
                   checked={custodyConfirmed}
                   onChange={(e) => setCustodyConfirmed(e.target.checked)}
                 />
-                <span>I confirm custody transfer</span>
+                <span>I confirm custody transfer of assets to designated recycling facility.</span>
               </label>
 
               <Field>
@@ -397,7 +395,7 @@ export default function OrderWorkflow({
                   checked={orderCompleted}
                   onChange={(e) => setOrderCompleted(e.target.checked)}
                 />
-                <span>Recycling completed</span>
+                <span>I confirm that the recycling process is complete.</span>
               </label>
 
               <input
