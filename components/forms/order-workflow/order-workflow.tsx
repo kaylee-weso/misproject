@@ -313,7 +313,9 @@ export default function OrderWorkflow({
                   />
                 </Field>
                 </div>
-                <MapComponent />
+                <div className="h-[350px] md:h-[400px] w-full">
+                  <MapComponent />
+                </div>
               </div>
               <Button onClick={handleSchedule} disabled={!canSchedule}>
                 Schedule

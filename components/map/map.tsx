@@ -189,7 +189,7 @@ export default function MapComponent() {
   ).sort() as string[];
 
   return (
-    <div style={{ position: "relative", height: "100vh" }}>
+    <div style={{ position: "relative", height: "100%", minHeight: "300px" }}>
       {/* Controls */}
       <div
       style={{
@@ -255,7 +255,7 @@ export default function MapComponent() {
     </div>
 
       {/* Map */}
-      <div id="map" style={{ position: "absolute", top: 80, bottom: 0, width: "100%" }} />
+      <div id="map" style={{ width: "100%", height: "100%" }} />
     </div>
   );
 }
