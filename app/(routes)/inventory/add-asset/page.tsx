@@ -64,8 +64,8 @@ export default function AddAssetPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [formSubmitted]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    
 
     const requiredFields = [
       "serialNumber",
@@ -77,10 +77,10 @@ export default function AddAssetPage() {
 
     for (const field of requiredFields) {
       if (!formData[field]) {
-        alert("Please fill all required fields");
-        return;
-      }
-    }
+      alert("Please fill all required fields");
+      return;
+  }
+}
 
     try {
       await addAsset({

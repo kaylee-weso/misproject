@@ -116,20 +116,17 @@ export default function AddAssetForm({
   };
 
   // --- Custom submit handler ---
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    // Custom validation
-    if (
-      !formData.serialNumber ||
-      !formData.vendor ||
-      !formData.modelName ||
-      !formData.assetType ||
-      !formData.purchaseDate
-    ) {
-      alert("Please fill out all required fields");
-      return;
-    }
+  const handleSubmit = () => {
+  if (
+    !formData.serialNumber ||
+    !formData.vendor ||
+    !formData.modelName ||
+    !formData.assetType ||
+    !formData.purchaseDate
+  ) {
+    alert("Please fill out all required fields");
+    return;
+  }
 
     // Confirmation
     if (!window.confirm("Are you sure you want to add asset?")) return;
@@ -139,8 +136,11 @@ export default function AddAssetForm({
   return (
     <div className="w-full max-w-2xl mx-auto">
       <form
-        onSubmit={handleSubmit} // use custom submit
         className="w-full bg-white rounded-xl shadow-sm p-6"
+        onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit();
+  }}
       >
         <FieldGroup className="space-y-4">
 
