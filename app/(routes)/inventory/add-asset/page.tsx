@@ -96,6 +96,7 @@ export default function AddAssetPage() {
 
       setFormSubmitted(true);
       router.push("/inventory");
+      router.refresh();
     } catch (err) {
       console.error("New asset insert failed:", err);
       alert("Failed to add asset");

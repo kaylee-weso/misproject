@@ -180,7 +180,7 @@ export async function insertAsset({serialNumber, vendorId, assetTypeId, modelNam
   );
   const modelId = modelResult.insertId;
 
-    await db.query(
+   const [assetResult]: any = await db.query(
     `INSERT INTO hardware_asset
     (serial_number, model_id, assigned_to, department_id, location_id, purchase_date, warranty_expiry_date, lifecycle_review_date, status_id, disposition_status_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)`,
@@ -195,4 +195,5 @@ export async function insertAsset({serialNumber, vendorId, assetTypeId, modelNam
       lifecycleReview,
     ]
 );
+  return { modelId, assetId: assetResult.insertId };
 }
