@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-
 import {
   fetchOrderAssets,
   fetchOrderWorkflowFields,
@@ -30,6 +29,8 @@ import { DatePickerInput2 } from "@/components/ui/datepickerinput2";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import MapComponent from "@/components/map/map";
 
+import { getFirstIncompleteStep } from "@/lib/service/normalizeOrder";
+
 type Props = {
   orderId: number | null;
   formData: any;
@@ -41,12 +42,15 @@ export default function OrderWorkflow({
   orderId,
   formData,
   setFormData,
+  initialStep,
 }: Props) {
   const router = useRouter();
 
   // -------------------------
-  // LOCAL UI STATE ONLY
+  // Step state (ONLY FOR INITIAL LOAD)
   // -------------------------
+  const [stepState, setStepState] = useState<number>(1);
+
   const [custodyConfirmed, setCustodyConfirmed] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -67,119 +71,7 @@ export default function OrderWorkflow({
   const addressRef = useRef<HTMLInputElement>(null);
 
   // -------------------------
-  // STEP ENGINE
-  // -------------------------
-  const steps = useMemo(() => {
-    return [
-      {
-        id: 1,
-        key: "schedule",
-        title: "Scheduled Pickup",
-
-        isUnlocked: () => true,
-        isComplete: () => !!formData.scheduleCompleted,
-
-        canSubmit: () =>
-          !!formData.company &&
-          !!formData.address &&
-          !!formData.scheduledPickupDate,
-
-        onSubmit: async () => {
-          if (!orderId) return;
-
-          await scheduleOrderRequest(
-            orderId,
-            assets,
-            1,
-            formData.scheduledPickupDate,
-            formData.address
-          );
-
-          setFormData({
-            ...formData,
-            scheduleCompleted: true,
-          });
-        },
-      },
-
-      {
-        id: 2,
-        key: "confirm",
-        title: "Confirm Asset Transfer",
-
-        isUnlocked: () => !!formData.scheduleCompleted,
-        isComplete: () => !!formData.confirmCompleted,
-
-        canSubmit: () =>
-          !!formData.actualPickupDate &&
-          !!formData.vendorOrderId &&
-          !!formData.pickupContact &&
-          custodyConfirmed,
-
-        onSubmit: async () => {
-          if (!orderId) return;
-
-          await confirmAssetTransferRequest(
-            orderId,
-            assets,
-            1,
-            formData.actualPickupDate,
-            formData.vendorOrderId,
-            formData.pickupContact,
-            formData.notes
-          );
-
-          setFormData({
-            ...formData,
-            confirmCompleted: true,
-          });
-        },
-      },
-
-      {
-        id: 3,
-        key: "complete",
-        title: "Verify Recycling Completion",
-
-        isUnlocked: () => !!formData.confirmCompleted,
-        isComplete: () => !!formData.completeCompleted,
-
-        canSubmit: () => !!orderCompleted && !!pdfFile,
-
-        onSubmit: async () => {
-          if (!orderId) return;
-
-          const completedDate = new Date().toISOString();
-
-          await completeOrderRequest(
-            orderId,
-            assets,
-            1,
-            completedDate,
-            formData.certificateReceived
-          );
-
-          setFormData({
-            ...formData,
-            completeCompleted: true,
-            completedDate,
-          });
-
-          alert("Order completed!");
-          router.push("/orderform");
-        },
-      },
-    ];
-  }, [formData, custodyConfirmed, orderCompleted, pdfFile, orderId]);
-
-  // -------------------------
-  // ACTIVE STEP
-  // -------------------------
-  const activeStepIndex = steps.findIndex((s) => !s.isComplete());
-  const activeStep = steps[Math.max(activeStepIndex, 0)];
-
-  // -------------------------
-  // LOAD WORKFLOW FIELDS
+  // LOAD FIELDS
   // -------------------------
   useEffect(() => {
     if (!orderId) return;
@@ -197,13 +89,17 @@ export default function OrderWorkflow({
   }, [orderId]);
 
   // -------------------------
+  // INITIAL STEP ONLY ON LOAD
+  // -------------------------
+  useEffect(() => {
+    const nextStep = getFirstIncompleteStep(formData);
+    setStepState(nextStep);
+  }, []);
+
+  // -------------------------
   // TABLE
   // -------------------------
-  const fetchAssetsTable = async ({
-    filters,
-    sortKey,
-    sortDirection,
-  }: any) => {
+  const fetchAssetsTable = async ({ filters, sortKey, sortDirection }: any) => {
     if (!orderId) return { data: [], total: 0, filterOptions: {} };
 
     const res = await fetchOrderAssets({
@@ -215,7 +111,7 @@ export default function OrderWorkflow({
 
     return {
       data: res.data,
-      total: res.data?.length || 0,
+      total: Array.isArray(res.data) ? res.data.length : 0,
       filterOptions: res.filterOptions ?? {},
     };
   };
@@ -238,48 +134,177 @@ export default function OrderWorkflow({
   });
 
   const assetColumns: Column[] = [
-    { key: "serial_number", label: "Serial Number", sortable: true },
-    { key: "asset_name", label: "Asset Name", sortable: true },
-    { key: "type_name", label: "Type", sortable: true },
+    { key: "serial_number", label: "Serial Number", sortable: true, filterable: true },
+    { key: "asset_name", label: "Asset Name", sortable: true, filterable: true },
+    { key: "type_name", label: "Type", sortable: true, filterable: true },
   ];
 
   // -------------------------
-  // RENDER STEP
+  // CONDITIONS
   // -------------------------
-  const renderStep = (step: any) => {
-    const locked = !step.isUnlocked();
-    const completed = step.isComplete();
+  const canSchedule =
+    formData.company &&
+    formData.address &&
+    formData.scheduledPickupDate;
 
-    return (
-      <div
-        className={
-          locked
-            ? "hidden"
-            : completed
-            ? "opacity-50 pointer-events-none"
-            : ""
-        }
-      >
+  const canConfirm =
+    formData.actualPickupDate &&
+    formData.vendorOrderId &&
+    formData.pickupContact &&
+    custodyConfirmed;
+
+  const canComplete = orderCompleted && pdfFile;
+
+  // -------------------------
+  // STEP FLOW CONTROL (KEY FIX)
+  // -------------------------
+
+  const handleSchedule = async () => {
+    if (!canSchedule || !orderId) return;
+    if (!window.confirm("Are you sure you want to schedule this pickup?")) return;
+
+    try {
+      await scheduleOrderRequest(
+        orderId,
+        assets,
+        1,
+        formData.scheduledPickupDate,
+        formData.address
+      );
+
+      setFormData({
+        ...formData,
+        scheduleCompleted: true,
+      });
+
+      setStepState(2); // unlock next step immediately
+    } catch (err) {
+      console.error(err);
+      alert("Failed to schedule pickup.");
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!canConfirm || !orderId) return;
+    if (!window.confirm("Are you sure you want to confirm asset transfer?")) return;
+
+    try {
+      await confirmAssetTransferRequest(
+        orderId,
+        assets,
+        1,
+        formData.actualPickupDate,
+        formData.vendorOrderId,
+        formData.pickupContact,
+        formData.notes
+      );
+
+      setFormData({
+        ...formData,
+        confirmCompleted: true,
+      });
+
+      setStepState(3);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to confirm asset transfer.");
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!canComplete || !orderId) return;
+    if (!window.confirm("Are you sure you want to mark this order as completed?")) return;
+
+    try {
+      const completedDate = new Date().toISOString();
+
+      await completeOrderRequest(
+        orderId,
+        assets,
+        1,
+        completedDate,
+        formData.certificateReceived
+      );
+
+      setFormData({
+        ...formData,
+        completeCompleted: true,
+        completedDate,
+      });
+
+      alert("Order completed!");
+      router.push("/orderform");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to complete the order.");
+    }
+  };
+
+  if (!orderId) return <p>Loading order...</p>;
+
+  return (
+    <div className="max-w-5xl mx-auto p-6 space-y-6">
+
+      {/* ORDER ASSETS */}
+      <FieldSet>
+        <FieldLegend className="ml-3 text-lg font-semibold mb-6">
+          Order Assets
+        </FieldLegend>
+
+        <div className="flex justify-end mb-2">
+          {(Object.keys(filters).length > 0 || sortKey || sortDirection) && (
+            <button className="btn-outline" onClick={clearAll}>
+              Clear All
+            </button>
+          )}
+        </div>
+
+        <ScrollArea className="h-[300px] w-full rounded-md">
+          <Table
+            columns={assetColumns}
+            data={assets}
+            filters={filters}
+            globalFilterOptions={{}}
+            onFilterChange={setFilters}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSortChange={(key) => {
+              if (sortKey === key) {
+                setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+              } else {
+                setSortKey(key);
+                setSortDirection("asc");
+              }
+            }}
+            rowKey="asset_id"
+          />
+        </ScrollArea>
+      </FieldSet>
+
+      <FieldSeparator />
+
+      {/* STEP 1 */}
+      <div className={stepState > 1 ? "opacity-50 pointer-events-none" : ""}>
         <FieldSet>
           <FieldLegend className="text-lg font-semibold mb-6">
-            {step.title}
+            Scheduled Pickup
           </FieldLegend>
 
-          {/* ---------------- STEP 1 ---------------- */}
-          {step.id === 1 && (
+          {loadingFields ? (
+            <p>Loading form...</p>
+          ) : (
             <div className="flex gap-6">
-              <div className="flex-1 space-y-6">
+              <div className="mt-20 space-y-10">
                 <Field>
                   <FieldLabel>Company</FieldLabel>
                   <AppCombobox
-                    options={workflowFields.facilities.map((f) => ({
-                      value: f.Company,
-                      label: f.Company,
-                    }))}
+                    options={Array.from(new Set(workflowFields.facilities.map(f => f.Company)))
+                      .map(c => ({ value: c, label: c }))}
                     value={formData.company || ""}
-                    onChange={(val) =>
-                      setFormData({ ...formData, company: val, address: "" })
-                    }
+                    onChange={(val) => {
+                      const selected = workflowFields.facilities.find(f => f.Company === val);
+                      setFormData({ ...formData, company: selected?.Company || "", address: "" });
+                    }}
                     filter={companyFilter}
                     setFilter={setCompanyFilter}
                     open={companyOpen}
@@ -291,15 +316,10 @@ export default function OrderWorkflow({
                   <FieldLabel>Address</FieldLabel>
                   <AppCombobox
                     options={workflowFields.facilities
-                      .filter((f) => f.Company === formData.company)
-                      .map((f) => ({
-                        value: f.facility_id,
-                        label: f.Full_Address,
-                      }))}
+                      .filter(f => f.Company === formData.company)
+                      .map(f => ({ value: f.facility_id, label: f.Full_Address }))}
                     value={formData.address || ""}
-                    onChange={(val) =>
-                      setFormData({ ...formData, address: val })
-                    }
+                    onChange={(val) => setFormData({ ...formData, address: val })}
                     disabled={!formData.company}
                     filter={addressFilter}
                     setFilter={setAddressFilter}
@@ -309,36 +329,44 @@ export default function OrderWorkflow({
                 </Field>
 
                 <Field>
-                  <FieldLabel>Pickup Date</FieldLabel>
+                  <FieldLabel>Scheduled Pickup Date</FieldLabel>
                   <DatePickerInput2
                     value={formData.scheduledPickupDate || ""}
-                    onChange={(v) =>
-                      setFormData({
-                        ...formData,
-                        scheduledPickupDate: v,
-                      })
-                    }
+                    onChange={(v) => setFormData({ ...formData, scheduledPickupDate: v })}
                   />
                 </Field>
               </div>
 
-              {/* ✅ RESTORED MAP COMPONENT */}
+              {/* ✅ MAP RESTORED */}
               <div className="flex-1">
                 <MapComponent />
               </div>
             </div>
           )}
 
-          {/* ---------------- STEP 2 ---------------- */}
-          {step.id === 2 && (
-            <div className="space-y-6">
+          <Button onClick={handleSchedule} disabled={!canSchedule} className="mt-4">
+            Schedule
+          </Button>
+        </FieldSet>
+      </div>
+
+      <FieldSeparator />
+
+      {/* STEP 2 */}
+      <div className={stepState > 2 ? "opacity-50 pointer-events-none" : ""}>
+        <FieldSet>
+          <FieldLegend className="text-lg font-semibold mb-8">
+            Confirm Asset Transfer
+          </FieldLegend>
+
+          <FieldGroup>
+            <div className="space-y-10">
+
               <Field>
-                <FieldLabel>Pickup Date</FieldLabel>
+                <FieldLabel>Actual Pickup Date</FieldLabel>
                 <DatePickerInput2
                   value={formData.actualPickupDate || ""}
-                  onChange={(v) =>
-                    setFormData({ ...formData, actualPickupDate: v })
-                  }
+                  onChange={(v) => setFormData({ ...formData, actualPickupDate: v })}
                 />
               </Field>
 
@@ -346,77 +374,74 @@ export default function OrderWorkflow({
                 <FieldLabel>Vendor Order ID</FieldLabel>
                 <TextInput
                   value={formData.vendorOrderId || ""}
-                  onChange={(v) =>
-                    setFormData({ ...formData, vendorOrderId: v })
-                  }
+                  onChange={(v) => setFormData({ ...formData, vendorOrderId: v })}
                 />
               </Field>
 
               <Field>
-                <FieldLabel>Pickup Contact</FieldLabel>
+                <FieldLabel>Pickup Contact Name</FieldLabel>
                 <TextInput
                   value={formData.pickupContact || ""}
-                  onChange={(v) =>
-                    setFormData({ ...formData, pickupContact: v })
-                  }
+                  onChange={(v) => setFormData({ ...formData, pickupContact: v })}
                 />
               </Field>
 
-              <label className="flex gap-2">
+              <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   checked={custodyConfirmed}
-                  onChange={(e) =>
-                    setCustodyConfirmed(e.target.checked)
-                  }
+                  onChange={(e) => setCustodyConfirmed(e.target.checked)}
                 />
-                Custody confirmed
-              </label>
-            </div>
-          )}
-
-          {/* ---------------- STEP 3 ---------------- */}
-          {step.id === 3 && (
-            <div className="space-y-6">
-              <label className="flex gap-2">
-                <input
-                  type="checkbox"
-                  checked={orderCompleted}
-                  onChange={(e) =>
-                    setOrderCompleted(e.target.checked)
-                  }
-                />
-                Recycling completed
+                <span>I confirm custody transfer</span>
               </label>
 
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(e) =>
-                  setPdfFile(e.target.files?.[0] || null)
-                }
-              />
+              <Field>
+                <FieldLabel>Notes</FieldLabel>
+                <TextInput
+                  value={formData.notes || ""}
+                  onChange={(v) => setFormData({ ...formData, notes: v })}
+                />
+              </Field>
             </div>
-          )}
+          </FieldGroup>
 
-          <Button
-            className="mt-4"
-            disabled={!step.canSubmit()}
-            onClick={step.onSubmit}
-          >
-            Continue
+          <Button onClick={handleConfirm} disabled={!canConfirm} className="mt-4">
+            Confirm
           </Button>
         </FieldSet>
       </div>
-    );
-  };
 
-  if (!orderId) return <p>Loading order...</p>;
-
-  return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
       <FieldSeparator />
-      {steps.map(renderStep)}
+
+      {/* STEP 3 */}
+      <div className={stepState > 3 ? "opacity-50 pointer-events-none" : ""}>
+        <FieldSet>
+          <FieldLegend className="text-lg font-semibold mb-8">
+            Verify Recycling Completion
+          </FieldLegend>
+
+          <div className="space-y-10">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={orderCompleted}
+                onChange={(e) => setOrderCompleted(e.target.checked)}
+              />
+              <span>Recycling completed</span>
+            </label>
+
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setPdfFile(e.target.files ? e.target.files[0] : null)}
+            />
+          </div>
+
+          <Button onClick={handleComplete} disabled={!canComplete} className="mt-4">
+            Complete
+          </Button>
+        </FieldSet>
+      </div>
     </div>
   );
 }
