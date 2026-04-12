@@ -32,7 +32,7 @@ type Props = {
   formData: any;
   setFormData: (data: any) => void;
   formOptions: any;
-  onSubmit: (data: any) => void; // now passes formData
+  onSubmit: (data: any) => Promise<void>;
 };
 
 export default function AddAssetForm({
@@ -49,7 +49,7 @@ export default function AddAssetForm({
 
   const isAssignable = isAssetAssignable(selectedAssetType);
 
-  // --- Options ---
+  // OPTIONS
   const vendorOptions = formOptions.vendors.map((v: any) => ({
     value: String(v.vendor_id),
     label: v.vendor_name,
@@ -75,7 +75,7 @@ export default function AddAssetForm({
     label: l.location_name,
   }));
 
-  // --- State for Combobox filters ---
+  // FILTER STATES
   const [vendorFilter, setVendorFilter] = useState("");
   const [vendorOpen, setVendorOpen] = useState(false);
 
@@ -91,7 +91,7 @@ export default function AddAssetForm({
   const [locationFilter, setLocationFilter] = useState("");
   const [locationOpen, setLocationOpen] = useState(false);
 
-  // --- Cancel handler ---
+  // CANCEL
   const handleCancel = () => {
     if (!window.confirm("Are you sure you want to cancel?")) return;
 
@@ -106,20 +106,13 @@ export default function AddAssetForm({
       purchaseDate: null,
     });
 
-    setVendorFilter(""); setVendorOpen(false);
-    setAssetTypeFilter(""); setAssetTypeOpen(false);
-    setUserFilter(""); setUserOpen(false);
-    setDepartmentFilter(""); setDepartmentOpen(false);
-    setLocationFilter(""); setLocationOpen(false);
-
     router.push("/inventory");
   };
 
-  // --- Custom submit handler ---
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // SUBMIT
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Custom validation
     if (
       !formData.serialNumber ||
       !formData.vendor ||
@@ -131,25 +124,26 @@ export default function AddAssetForm({
       return;
     }
 
-    // Confirmation
     if (!window.confirm("Are you sure you want to add asset?")) return;
 
-    // Call onSubmit prop
-    onSubmit(formData);
+    try {
+      await onSubmit(formData);
 
-    // Redirect
-    router.push("/inventory");
+      router.push("/inventory");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add asset");
+    }
   };
 
   return (
     <div className="w-full max-w-2xl mx-auto">
       <form
-        onSubmit={handleSubmit} // use custom submit
+        onSubmit={handleSubmit}
         className="w-full bg-white rounded-xl shadow-sm p-6"
       >
         <FieldGroup className="space-y-4">
 
-          {/* Add New Asset */}
           <FieldSet>
             <FieldLegend>Add New Asset</FieldLegend>
             <FieldDescription>
@@ -160,7 +154,6 @@ export default function AddAssetForm({
               <Field>
                 <FieldLabel>Serial Number</FieldLabel>
                 <input
-                  type="text"
                   value={formData.serialNumber}
                   onChange={(e) =>
                     setFormData({ ...formData, serialNumber: e.target.value })
@@ -171,7 +164,6 @@ export default function AddAssetForm({
 
               <div className="grid grid-cols-3 gap-4">
 
-                {/* Vendor */}
                 <Field>
                   <FieldLabel>Manufacturer</FieldLabel>
                   <AppCombobox
@@ -188,11 +180,9 @@ export default function AddAssetForm({
                   />
                 </Field>
 
-                {/* Model */}
                 <Field>
                   <FieldLabel>Model Name</FieldLabel>
                   <input
-                    type="text"
                     value={formData.modelName}
                     onChange={(e) =>
                       setFormData({ ...formData, modelName: e.target.value })
@@ -201,7 +191,6 @@ export default function AddAssetForm({
                   />
                 </Field>
 
-                {/* Asset Type */}
                 <Field>
                   <FieldLabel>Asset Type</FieldLabel>
                   <AppCombobox
@@ -229,7 +218,6 @@ export default function AddAssetForm({
 
           <FieldSeparator />
 
-          {/* Assignment */}
           <FieldSet>
             <FieldLegend>Assignment</FieldLegend>
 
@@ -245,26 +233,13 @@ export default function AddAssetForm({
                 setFilter={setUserFilter}
                 open={userOpen}
                 setOpen={setUserOpen}
-                placeholder="Select user"
                 disabled={!isAssignable}
-                onSelectExtra={(v) => {
-                  const user = formOptions.users.find(
-                    (u: any) => String(u.user_id) === v
-                  );
-
-                  setFormData((prev: any) => ({
-                    ...prev,
-                    assignedTo: v,
-                    department: user ? String(user.department_id || "") : "",
-                    location: user
-                      ? String(user.primary_location_id || "")
-                      : "",
-                  }));
-                }}
+                placeholder="Select user"
               />
             </Field>
 
             <div className="grid grid-cols-2 gap-4">
+
               <Field>
                 <FieldLabel>Department</FieldLabel>
                 <AppCombobox
@@ -277,8 +252,8 @@ export default function AddAssetForm({
                   setFilter={setDepartmentFilter}
                   open={departmentOpen}
                   setOpen={setDepartmentOpen}
-                  placeholder="Select department"
                   disabled={!!formData.assignedTo}
+                  placeholder="Select department"
                 />
               </Field>
 
@@ -294,8 +269,8 @@ export default function AddAssetForm({
                   setFilter={setLocationFilter}
                   open={locationOpen}
                   setOpen={setLocationOpen}
-                  placeholder="Select location"
                   disabled={!!formData.assignedTo}
+                  placeholder="Select location"
                 />
               </Field>
             </div>
@@ -303,13 +278,14 @@ export default function AddAssetForm({
 
           <FieldSeparator />
 
-          {/* Purchase Date */}
           <FieldSet>
             <FieldLegend>Purchase Date</FieldLegend>
+
             <DatePickerInput2
               value={formData.purchaseDate}
-              onChange={(v) => setFormData({ ...formData, purchaseDate: v })}
-              placeholder="Select purchase date"
+              onChange={(v) =>
+                setFormData({ ...formData, purchaseDate: v })
+              }
             />
           </FieldSet>
 
