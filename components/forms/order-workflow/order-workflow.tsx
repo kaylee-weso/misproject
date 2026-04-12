@@ -151,6 +151,9 @@ export default function OrderWorkflow({
   const handleSchedule = async () => {
     if (!canSchedule || !orderId) return;
 
+    const ok = window.confirm("Are you sure you want to schedule pickup?");
+    if (!ok) return;
+
     await scheduleOrderRequest(
       orderId,
       assets,
@@ -167,6 +170,9 @@ export default function OrderWorkflow({
 
   const handleConfirm = async () => {
     if (!canConfirm || !orderId) return;
+
+    const ok = window.confirm("Are you sure you want to confirm asset transfer?");
+    if (!ok) return;
 
     await confirmAssetTransferRequest(
       orderId,
@@ -185,6 +191,10 @@ export default function OrderWorkflow({
 
   const handleComplete = async () => {
     if (!canComplete || !orderId) return;
+
+    const ok = window.confirm("Are you sure you want to complete recycling order?");
+    if (!ok) return;
+
 
     const completedDate = new Date().toISOString();
 
