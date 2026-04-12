@@ -251,11 +251,11 @@ export default function OrderWorkflow({
       {/* ================= STEP 1 ================= */}
       <div className={scheduleLocked ? "opacity-50 pointer-events-none" : ""}>
         <FieldSet>
-          <div className="flex-1 flex flex-col space-y-10 mt-8 bg-white rounded-xl shadow-sm p-6">
+          <div className="flex flex-col space-y-10 mt-8 bg-white rounded-xl shadow-sm p-6">
             <FieldLegend className="text-lg font-semibold mb-6">Scheduled Pickup</FieldLegend>
 
           
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               <div className="space-y-4">
                 <Field>
                   <FieldLabel>Company</FieldLabel>
@@ -313,7 +313,7 @@ export default function OrderWorkflow({
                   />
                 </Field>
                 </div>
-                <div className="w-full h-[260px] md:h-[300px] rounded-md">
+                <div className="w-full h-[180px] md:h-[200px] rounded-md">
                   <MapComponent />
                 </div>
               </div>
