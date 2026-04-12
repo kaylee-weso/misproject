@@ -21,20 +21,30 @@ import {
   createOrder,
 } from "@/lib/fetchers/orderform/orderform";
 import "./create-order-form.css";
-import { Combobox, ComboboxInput, ComboboxContent, ComboboxList, ComboboxItem } from "@/components/ui/combobox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
+import AppCombobox from "@/components/ui/app-combobox";
 
 export default function CreateOrderForm() {
   const router = useRouter();
-  const [formData, setFormData] = useState<{ location: string | null }>({ location: null });
-  const [formOptions, setFormOptions] = useState<{ locations: Array<{ location_name: string }> }>({ locations: [] });
+
+  const [formData, setFormData] = useState<{ location: string | null }>({
+    location: null,
+  });
+
+  const [formOptions, setFormOptions] = useState<{
+    locations: Array<{ location_name: string }>;
+  }>({ locations: [] });
+
   const [selected, setSelected] = useState<any[]>([]);
 
   const [leftSelected, setLeftSelected] = useState<number[]>([]);
   const [rightSelected, setRightSelected] = useState<number[]>([]);
   const [leftAllSelected, setLeftAllSelected] = useState(false);
   const [rightAllSelected, setRightAllSelected] = useState(false);
+
+  // AppCombobox state
+  const [locationFilter, setLocationFilter] = useState("");
+  const [locationOpen, setLocationOpen] = useState(false);
 
   // -------------------------
   // Fetch form options
@@ -52,6 +62,12 @@ export default function CreateOrderForm() {
     setFilters({});
   }, [formData.location]);
 
+  // optional UX reset
+  useEffect(() => {
+    setLocationFilter("");
+    setLocationOpen(false);
+  }, [formData.location]);
+
   const locationOptions =
     formOptions?.locations?.map((l) => ({
       value: l.location_name,
@@ -61,8 +77,13 @@ export default function CreateOrderForm() {
   // -------------------------
   // Server table endpoint
   // -------------------------
-  const fetchAssetsTable = async ({ filters, sortKey, sortDirection }: any) => {
-    if (!formData.location) return { data: [], total: 0, filterOptions: {} };
+  const fetchAssetsTable = async ({
+    filters,
+    sortKey,
+    sortDirection,
+  }: any) => {
+    if (!formData.location)
+      return { data: [], total: 0, filterOptions: {} };
 
     const res = await fetchAssets({
       location: formData.location,
@@ -73,15 +94,16 @@ export default function CreateOrderForm() {
 
     let filtered = [...res.data];
 
-    // Remove already selected
     filtered = filtered.filter(
       (a) => !selected.some((s) => s.asset_id === a.asset_id)
     );
 
     if (sortKey) {
       filtered.sort((a: any, b: any) => {
-        if (a[sortKey] < b[sortKey]) return sortDirection === "asc" ? -1 : 1;
-        if (a[sortKey] > b[sortKey]) return sortDirection === "asc" ? 1 : -1;
+        if (a[sortKey] < b[sortKey])
+          return sortDirection === "asc" ? -1 : 1;
+        if (a[sortKey] > b[sortKey])
+          return sortDirection === "asc" ? 1 : -1;
         return 0;
       });
     }
@@ -115,7 +137,7 @@ export default function CreateOrderForm() {
   });
 
   // -------------------------
-  // Sync "Select All" with selected items
+  // Sync "Select All"
   // -------------------------
   useEffect(() => {
     setLeftAllSelected(
@@ -133,40 +155,60 @@ export default function CreateOrderForm() {
   // Columns
   // -------------------------
   const availableColumns: Column[] = [
-  {
-    key: "select",
-    label: "",
-    width: "w-[20px]",
-    renderHeader: () => (
-      <div className="flex items-center justify-center border-2 border-black rounded ">
-      <Checkbox
-        checked={leftAllSelected}
-        onCheckedChange={(checked) => {
-          const val = !!checked;
-          setLeftAllSelected(val);
-          // Select all available rows if checked, else clear selection
-          setLeftSelected(val ? available.map((a) => Number(a.asset_id)) : []);
-        }}
-      />
-      </div>
-    ),
-    render: (row) => (
-      <Checkbox className="flex items-center justify-center border-2 border-black rounded"
-        checked={leftSelected.includes(Number(row.asset_id))}
-        onCheckedChange={() => {
-          setLeftSelected((prev) =>
-            prev.includes(Number(row.asset_id))
-              ? prev.filter((id) => id !== Number(row.asset_id))
-              : [...prev, Number(row.asset_id)]
-          );
-        }}
-      />
-    ),
-  },
-  { key: "serial_number", label: "Serial Number", sortable: true, width: "w-[60px]" },
-  { key: "asset_name", label: "Asset Name", sortable: true, filterable: true, width: "w-[80px]" },
-  { key: "type_name", label: "Type", sortable: true, filterable: true, width: "w-[80px]" },
-];
+    {
+      key: "select",
+      label: "",
+      width: "w-[20px]",
+      renderHeader: () => (
+        <div className="flex items-center justify-center border-2 border-black rounded">
+          <Checkbox
+            checked={leftAllSelected}
+            onCheckedChange={(checked) => {
+              const val = !!checked;
+              setLeftAllSelected(val);
+              setLeftSelected(
+                val ? available.map((a) => Number(a.asset_id)) : []
+              );
+            }}
+          />
+        </div>
+      ),
+      render: (row) => (
+        <Checkbox
+          className="flex items-center justify-center border-2 border-black rounded"
+          checked={leftSelected.includes(Number(row.asset_id))}
+          onCheckedChange={() => {
+            setLeftSelected((prev) =>
+              prev.includes(Number(row.asset_id))
+                ? prev.filter((id) => id !== Number(row.asset_id))
+                : [...prev, Number(row.asset_id)]
+            );
+          }}
+        />
+      ),
+    },
+    {
+      key: "serial_number",
+      label: "Serial Number",
+      sortable: true,
+      width: "w-[60px]",
+    },
+    {
+      key: "asset_name",
+      label: "Asset Name",
+      sortable: true,
+      filterable: true,
+      width: "w-[80px]",
+    },
+    {
+      key: "type_name",
+      label: "Type",
+      sortable: true,
+      filterable: true,
+      width: "w-[80px]",
+    },
+  ];
+
   const selectedColumns: Column[] = [
     {
       key: "select",
@@ -179,22 +221,25 @@ export default function CreateOrderForm() {
             onCheckedChange={(checked) => {
               const val = !!checked;
               setRightAllSelected(val);
-              setRightSelected(val ? selected.map((a) => Number(a.asset_id)) : []);
+              setRightSelected(
+                val ? selected.map((a) => Number(a.asset_id)) : []
+              );
             }}
           />
         </div>
       ),
       render: (row) => (
-          <Checkbox className="flex items-center justify-center border-2 border-black rounded"
-            checked={rightSelected.includes(Number(row.asset_id))}
-            onCheckedChange={() =>
-              setRightSelected((prev) =>
-                prev.includes(Number(row.asset_id))
-                  ? prev.filter((id) => id !== Number(row.asset_id))
-                  : [...prev, Number(row.asset_id)]
-              )
-            }
-          />
+        <Checkbox
+          className="flex items-center justify-center border-2 border-black rounded"
+          checked={rightSelected.includes(Number(row.asset_id))}
+          onCheckedChange={() =>
+            setRightSelected((prev) =>
+              prev.includes(Number(row.asset_id))
+                ? prev.filter((id) => id !== Number(row.asset_id))
+                : [...prev, Number(row.asset_id)]
+            )
+          }
+        />
       ),
     },
     { key: "serial_number", label: "Serial Number", width: "w-[60px]" },
@@ -202,21 +247,17 @@ export default function CreateOrderForm() {
     { key: "type_name", label: "Type", width: "w-[80px]" },
   ];
 
-
-   // -------------------------
-  // Scroll Area
   // -------------------------
-
-
-   // -------------------------
   // Move logic
   // -------------------------
   const tableMaxHeight = 40 * 5;
+
   const moveRight = () => {
     const toMove = available.filter((a) =>
       leftSelected.includes(Number(a.asset_id))
     );
     if (!toMove.length) return;
+
     setSelected((prev) => [...prev, ...toMove]);
     setLeftSelected([]);
     setLeftAllSelected(false);
@@ -227,6 +268,7 @@ export default function CreateOrderForm() {
       rightSelected.includes(Number(a.asset_id))
     );
     if (!toMove.length) return;
+
     setSelected((prev) =>
       prev.filter((a) => !rightSelected.includes(Number(a.asset_id)))
     );
@@ -255,28 +297,28 @@ export default function CreateOrderForm() {
     <div className="w-full max-w-5xl">
       <div className="p-6">
         <FieldGroup className="space-y-4">
-          
           {/* Location */}
           <FieldSet>
             <FieldLegend>Create Recycling Order</FieldLegend>
             <FieldDescription>Select location</FieldDescription>
             <Field>
               <FieldLabel>Location</FieldLabel>
-              <Combobox
-                value={formData.location}
-                onValueChange={(value) => setFormData({ ...formData, location: value })}
-              >
-                <ComboboxInput placeholder="Select location..." />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {locationOptions.map((loc) => (
-                      <ComboboxItem key={loc.value} value={loc.value}>
-                        {loc.label}
-                      </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
+
+              <AppCombobox
+                options={locationOptions}
+                value={formData.location || ""}
+                onChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    location: value || null,
+                  })
+                }
+                placeholder="Select location..."
+                filter={locationFilter}
+                setFilter={setLocationFilter}
+                open={locationOpen}
+                setOpen={setLocationOpen}
+              />
             </Field>
           </FieldSet>
 
@@ -285,22 +327,28 @@ export default function CreateOrderForm() {
           {/* Tables */}
           <FieldSet>
             <FieldLegend>Select Assets</FieldLegend>
+
             <div className="overflow-x-auto">
               <div className="flex flex-col lg:flex-row gap-4 min-w-0 w-full">
-
                 {/* Left Table */}
                 <div className="flex-1 min-w-0">
-                  <div className = "flex justify-end">
-                    {(Object.keys(filters).length > 0 || sortKey || sortDirection) && (
-                    <button
-                      className="btn-outline cursor-pointer hover:underline transition mb-2"
-                      onClick={clearAll}
-                    >
-                      Clear All
-                    </button>
+                  <div className="flex justify-end">
+                    {(Object.keys(filters).length > 0 ||
+                      sortKey ||
+                      sortDirection) && (
+                      <button
+                        className="btn-outline cursor-pointer hover:underline transition mb-2"
+                        onClick={clearAll}
+                      >
+                        Clear All
+                      </button>
                     )}
                   </div>
-                  <ScrollArea className="rounded-md" style={{ maxHeight: tableMaxHeight }}>
+
+                  <ScrollArea
+                    className="rounded-md"
+                    style={{ maxHeight: tableMaxHeight }}
+                  >
                     <Table
                       columns={availableColumns}
                       data={available}
@@ -332,7 +380,10 @@ export default function CreateOrderForm() {
 
                 {/* Right Table */}
                 <div className="flex-1 min-w-0">
-                  <ScrollArea className="rounded-md" style={{ maxHeight: tableMaxHeight }}>
+                  <ScrollArea
+                    className="rounded-md"
+                    style={{ maxHeight: tableMaxHeight }}
+                  >
                     <Table
                       columns={selectedColumns}
                       data={selected}
@@ -344,7 +395,6 @@ export default function CreateOrderForm() {
                     />
                   </ScrollArea>
                 </div>
-
               </div>
             </div>
           </FieldSet>
@@ -357,7 +407,6 @@ export default function CreateOrderForm() {
               Verify Asset Selection
             </Button>
           </FieldSet>
-
         </FieldGroup>
       </div>
     </div>
