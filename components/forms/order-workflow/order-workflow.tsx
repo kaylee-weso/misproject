@@ -144,11 +144,14 @@ export default function OrderWorkflow({
   const canComplete = orderCompleted && pdfFile;
 
   // -------------------------
-  // 🔥 FIXED LOCKING LOGIC
+  // WORKFLOW STATE (CRITICAL FIX)
   // -------------------------
-  const scheduleLocked = !!formData.scheduleCompleted;
-  const confirmLocked = !!formData.confirmCompleted;
-  const completeLocked = !!formData.completeCompleted;
+  const scheduleDone = !!formData.scheduleCompleted;
+  const confirmDone = !!formData.confirmCompleted;
+  const completeDone = !!formData.completeCompleted;
+
+  const activeStep =
+    !scheduleDone ? 1 : !confirmDone ? 2 : 3;
 
   // -------------------------
   // HANDLERS
@@ -232,10 +235,19 @@ export default function OrderWorkflow({
 
   if (!orderId) return <p>Loading order...</p>;
 
+  // -------------------------
+  // STEP VISIBILITY + LOCKING
+  // -------------------------
+  const step1Locked = scheduleDone;
+  const step2Visible = scheduleDone;
+  const step2Locked = confirmDone;
+  const step3Visible = confirmDone;
+  const step3Locked = completeDone;
+
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
 
-      {/* ORDER ASSETS */}
+      {/* TABLE */}
       <FieldSet>
         <FieldLegend>Order Assets</FieldLegend>
 
@@ -263,8 +275,10 @@ export default function OrderWorkflow({
 
       <FieldSeparator />
 
-      {/* STEP 1 */}
-      <div className={scheduleLocked ? "opacity-50 pointer-events-none" : ""}>
+      {/* =========================
+          STEP 1 - SCHEDULE
+      ========================== */}
+      <div className={step1Locked ? "opacity-50 pointer-events-none" : ""}>
         <FieldSet>
           <FieldLegend>Scheduled Pickup</FieldLegend>
 
@@ -324,28 +338,29 @@ export default function OrderWorkflow({
                   }
                 />
               </Field>
-
-              <Button onClick={handleSchedule} disabled={!canSchedule}>
-                Schedule
-              </Button>
             </div>
 
             <div className="flex-1">
               <MapComponent />
             </div>
+            <Button onClick={handleSchedule} disabled={!canSchedule}>
+              Schedule
+            </Button>
           </div>
         </FieldSet>
       </div>
 
       <FieldSeparator />
 
-      {/* STEP 2 */}
+      {/* =========================
+          STEP 2 - CONFIRM
+      ========================== */}
       <div
         className={
-          confirmLocked
-            ? "opacity-50 pointer-events-none"
-            : !scheduleLocked
+          !step2Visible
             ? "hidden"
+            : step2Locked
+            ? "opacity-50 pointer-events-none"
             : ""
         }
       >
@@ -409,13 +424,15 @@ export default function OrderWorkflow({
 
       <FieldSeparator />
 
-      {/* STEP 3 */}
+      {/* =========================
+          STEP 3 - COMPLETE
+      ========================== */}
       <div
         className={
-          completeLocked
-            ? "opacity-50 pointer-events-none"
-            : !confirmLocked
+          !step3Visible
             ? "hidden"
+            : step3Locked
+            ? "opacity-50 pointer-events-none"
             : ""
         }
       >
