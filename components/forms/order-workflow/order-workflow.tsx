@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
+
 import {
   fetchOrderAssets,
   fetchOrderWorkflowFields,
@@ -29,8 +30,6 @@ import { DatePickerInput2 } from "@/components/ui/datepickerinput2";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import MapComponent from "@/components/map/map";
 
-import { getFirstIncompleteStep } from "@/lib/service/normalizeOrder";
-
 type Props = {
   orderId: number | null;
   formData: any;
@@ -42,12 +41,11 @@ export default function OrderWorkflow({
   orderId,
   formData,
   setFormData,
-  initialStep,
 }: Props) {
   const router = useRouter();
 
   // -------------------------
-  // Local UI only state
+  // LOCAL UI STATE ONLY
   // -------------------------
   const [custodyConfirmed, setCustodyConfirmed] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState(false);
@@ -56,6 +54,7 @@ export default function OrderWorkflow({
   const [workflowFields, setWorkflowFields] = useState<{ facilities: any[] }>({
     facilities: [],
   });
+
   const [loadingFields, setLoadingFields] = useState(true);
 
   const [companyFilter, setCompanyFilter] = useState("");
@@ -68,15 +67,119 @@ export default function OrderWorkflow({
   const addressRef = useRef<HTMLInputElement>(null);
 
   // -------------------------
-  // STEP DERIVED FROM DATA (SINGLE SOURCE OF TRUTH)
+  // STEP ENGINE
   // -------------------------
-  const stepState = getFirstIncompleteStep(formData);
+  const steps = useMemo(() => {
+    return [
+      {
+        id: 1,
+        key: "schedule",
+        title: "Scheduled Pickup",
 
-  const isStep1Complete = stepState > 1;
-  const isStep2Complete = stepState > 2;
+        isUnlocked: () => true,
+        isComplete: () => !!formData.scheduleCompleted,
+
+        canSubmit: () =>
+          !!formData.company &&
+          !!formData.address &&
+          !!formData.scheduledPickupDate,
+
+        onSubmit: async () => {
+          if (!orderId) return;
+
+          await scheduleOrderRequest(
+            orderId,
+            assets,
+            1,
+            formData.scheduledPickupDate,
+            formData.address
+          );
+
+          setFormData({
+            ...formData,
+            scheduleCompleted: true,
+          });
+        },
+      },
+
+      {
+        id: 2,
+        key: "confirm",
+        title: "Confirm Asset Transfer",
+
+        isUnlocked: () => !!formData.scheduleCompleted,
+        isComplete: () => !!formData.confirmCompleted,
+
+        canSubmit: () =>
+          !!formData.actualPickupDate &&
+          !!formData.vendorOrderId &&
+          !!formData.pickupContact &&
+          custodyConfirmed,
+
+        onSubmit: async () => {
+          if (!orderId) return;
+
+          await confirmAssetTransferRequest(
+            orderId,
+            assets,
+            1,
+            formData.actualPickupDate,
+            formData.vendorOrderId,
+            formData.pickupContact,
+            formData.notes
+          );
+
+          setFormData({
+            ...formData,
+            confirmCompleted: true,
+          });
+        },
+      },
+
+      {
+        id: 3,
+        key: "complete",
+        title: "Verify Recycling Completion",
+
+        isUnlocked: () => !!formData.confirmCompleted,
+        isComplete: () => !!formData.completeCompleted,
+
+        canSubmit: () => !!orderCompleted && !!pdfFile,
+
+        onSubmit: async () => {
+          if (!orderId) return;
+
+          const completedDate = new Date().toISOString();
+
+          await completeOrderRequest(
+            orderId,
+            assets,
+            1,
+            completedDate,
+            formData.certificateReceived
+          );
+
+          setFormData({
+            ...formData,
+            completeCompleted: true,
+            completedDate,
+          });
+
+          alert("Order completed!");
+          router.push("/orderform");
+        },
+      },
+    ];
+  }, [formData, custodyConfirmed, orderCompleted, pdfFile, orderId]);
 
   // -------------------------
-  // Load workflow fields
+  // ACTIVE STEP
+  // -------------------------
+  const activeStepIndex = steps.findIndex((s) => !s.isComplete());
+  const activeStep = steps[Math.max(activeStepIndex, 0)];
+
+  // -------------------------
+  // LOAD WORKFLOW FIELDS
   // -------------------------
   useEffect(() => {
     if (!orderId) return;
@@ -85,8 +188,6 @@ export default function OrderWorkflow({
       try {
         const data = await fetchOrderWorkflowFields(orderId);
         setWorkflowFields({ facilities: data.facilities || [] });
-      } catch (err) {
-        console.error(err);
       } finally {
         setLoadingFields(false);
       }
@@ -96,7 +197,7 @@ export default function OrderWorkflow({
   }, [orderId]);
 
   // -------------------------
-  // Assets table
+  // TABLE
   // -------------------------
   const fetchAssetsTable = async ({
     filters,
@@ -114,7 +215,7 @@ export default function OrderWorkflow({
 
     return {
       data: res.data,
-      total: Array.isArray(res.data) ? res.data.length : 0,
+      total: res.data?.length || 0,
       filterOptions: res.filterOptions ?? {},
     };
   };
@@ -137,251 +238,106 @@ export default function OrderWorkflow({
   });
 
   const assetColumns: Column[] = [
-    { key: "serial_number", label: "Serial Number", sortable: true, filterable: true },
-    { key: "asset_name", label: "Asset Name", sortable: true, filterable: true },
-    { key: "type_name", label: "Type", sortable: true, filterable: true },
+    { key: "serial_number", label: "Serial Number", sortable: true },
+    { key: "asset_name", label: "Asset Name", sortable: true },
+    { key: "type_name", label: "Type", sortable: true },
   ];
 
   // -------------------------
-  // STEP VALIDATION
+  // RENDER STEP
   // -------------------------
-  const canSchedule =
-    formData.company &&
-    formData.address &&
-    formData.scheduledPickupDate;
+  const renderStep = (step: any) => {
+    const locked = !step.isUnlocked();
+    const completed = step.isComplete();
 
-  const canConfirm =
-    formData.actualPickupDate &&
-    formData.vendorOrderId &&
-    formData.pickupContact &&
-    custodyConfirmed;
-
-  const canComplete = orderCompleted && pdfFile;
-
-  // -------------------------
-  // HANDLERS
-  // -------------------------
-
-  const handleSchedule = async () => {
-    if (!canSchedule || !orderId) return;
-    if (!window.confirm("Schedule pickup?")) return;
-
-    try {
-      await scheduleOrderRequest(
-        orderId,
-        assets,
-        1,
-        formData.scheduledPickupDate,
-        formData.address
-      );
-
-      setFormData({
-        ...formData,
-        scheduleCompleted: true,
-      });
-    } catch (err) {
-      console.error(err);
-      alert("Failed to schedule pickup.");
-    }
-  };
-
-  const handleConfirm = async () => {
-    if (!canConfirm || !orderId) return;
-    if (!window.confirm("Confirm asset transfer?")) return;
-
-    try {
-      await confirmAssetTransferRequest(
-        orderId,
-        assets,
-        1,
-        formData.actualPickupDate,
-        formData.vendorOrderId,
-        formData.pickupContact,
-        formData.notes
-      );
-
-      setFormData({
-        ...formData,
-        confirmCompleted: true,
-      });
-    } catch (err) {
-      console.error(err);
-      alert("Failed to confirm asset transfer.");
-    }
-  };
-
-  const handleComplete = async () => {
-    if (!canComplete || !orderId) return;
-    if (!window.confirm("Complete order?")) return;
-
-    try {
-      const completedDate = new Date().toISOString();
-
-      await completeOrderRequest(
-        orderId,
-        assets,
-        1,
-        completedDate,
-        formData.certificateReceived
-      );
-
-      setFormData({
-        ...formData,
-        completeCompleted: true,
-        completedDate,
-      });
-
-      alert("Order completed!");
-      router.push("/orderform");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to complete order.");
-    }
-  };
-
-  if (!orderId) return <p>Loading order...</p>;
-
-  return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-
-      {/* ASSETS TABLE */}
-      <FieldSet>
-        <FieldLegend className="ml-3 text-lg font-semibold mb-6">
-          Order Assets
-        </FieldLegend>
-
-        <div className="flex justify-end mb-2">
-          {(Object.keys(filters).length > 0 || sortKey || sortDirection) && (
-            <button className="btn-outline" onClick={clearAll}>
-              Clear All
-            </button>
-          )}
-        </div>
-
-        <ScrollArea className="h-[300px] w-full rounded-md">
-          <Table
-            columns={assetColumns}
-            data={assets}
-            filters={filters}
-            globalFilterOptions={{}}
-            onFilterChange={setFilters}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
-            onSortChange={(key) => {
-              if (sortKey === key) {
-                setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-              } else {
-                setSortKey(key);
-                setSortDirection("asc");
-              }
-            }}
-            rowKey="asset_id"
-          />
-        </ScrollArea>
-      </FieldSet>
-
-      <FieldSeparator />
-
-      {/* STEP 1 */}
-      <div className={isStep1Complete ? "opacity-50 pointer-events-none" : ""}>
+    return (
+      <div
+        className={
+          locked
+            ? "hidden"
+            : completed
+            ? "opacity-50 pointer-events-none"
+            : ""
+        }
+      >
         <FieldSet>
           <FieldLegend className="text-lg font-semibold mb-6">
-            Scheduled Pickup
+            {step.title}
           </FieldLegend>
 
-          {loadingFields ? (
-            <p>Loading form...</p>
-          ) : (
-            <div className="space-y-6">
-              <Field>
-                <FieldLabel>Company</FieldLabel>
-                <AppCombobox
-                  options={workflowFields.facilities.map((f) => ({
-                    value: f.Company,
-                    label: f.Company,
-                  }))}
-                  value={formData.company || ""}
-                  onChange={(val) => {
-                    const selected = workflowFields.facilities.find(
-                      (f) => f.Company === val
-                    );
-
-                    setFormData({
-                      ...formData,
-                      company: selected?.Company || "",
-                      address: "",
-                    });
-                  }}
-                  placeholder="Select company"
-                  filter={companyFilter}
-                  setFilter={setCompanyFilter}
-                  open={companyOpen}
-                  setOpen={setCompanyOpen}
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel>Address</FieldLabel>
-                <AppCombobox
-                  options={workflowFields.facilities
-                    .filter((f) => f.Company === formData.company)
-                    .map((f) => ({
-                      value: f.facility_id,
-                      label: f.Full_Address,
+          {/* ---------------- STEP 1 ---------------- */}
+          {step.id === 1 && (
+            <div className="flex gap-6">
+              <div className="flex-1 space-y-6">
+                <Field>
+                  <FieldLabel>Company</FieldLabel>
+                  <AppCombobox
+                    options={workflowFields.facilities.map((f) => ({
+                      value: f.Company,
+                      label: f.Company,
                     }))}
-                  value={formData.address || ""}
-                  onChange={(val) =>
-                    setFormData({ ...formData, address: val })
-                  }
-                  disabled={!formData.company}
-                  filter={addressFilter}
-                  setFilter={setAddressFilter}
-                  open={addressOpen}
-                  setOpen={setAddressOpen}
-                />
-              </Field>
+                    value={formData.company || ""}
+                    onChange={(val) =>
+                      setFormData({ ...formData, company: val, address: "" })
+                    }
+                    filter={companyFilter}
+                    setFilter={setCompanyFilter}
+                    open={companyOpen}
+                    setOpen={setCompanyOpen}
+                  />
+                </Field>
 
+                <Field>
+                  <FieldLabel>Address</FieldLabel>
+                  <AppCombobox
+                    options={workflowFields.facilities
+                      .filter((f) => f.Company === formData.company)
+                      .map((f) => ({
+                        value: f.facility_id,
+                        label: f.Full_Address,
+                      }))}
+                    value={formData.address || ""}
+                    onChange={(val) =>
+                      setFormData({ ...formData, address: val })
+                    }
+                    disabled={!formData.company}
+                    filter={addressFilter}
+                    setFilter={setAddressFilter}
+                    open={addressOpen}
+                    setOpen={setAddressOpen}
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel>Pickup Date</FieldLabel>
+                  <DatePickerInput2
+                    value={formData.scheduledPickupDate || ""}
+                    onChange={(v) =>
+                      setFormData({
+                        ...formData,
+                        scheduledPickupDate: v,
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+
+              {/* ✅ RESTORED MAP COMPONENT */}
+              <div className="flex-1">
+                <MapComponent />
+              </div>
+            </div>
+          )}
+
+          {/* ---------------- STEP 2 ---------------- */}
+          {step.id === 2 && (
+            <div className="space-y-6">
               <Field>
                 <FieldLabel>Pickup Date</FieldLabel>
                 <DatePickerInput2
-                  value={formData.scheduledPickupDate || ""}
-                  onChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      scheduledPickupDate: v,
-                    })
-                  }
-                />
-              </Field>
-
-              <Button onClick={handleSchedule} disabled={!canSchedule}>
-                Schedule
-              </Button>
-            </div>
-          )}
-        </FieldSet>
-      </div>
-
-      <FieldSeparator />
-
-      {/* STEP 2 */}
-      {stepState >= 2 && (
-        <div className={isStep2Complete ? "opacity-50 pointer-events-none" : ""}>
-          <FieldSet>
-            <FieldLegend className="text-lg font-semibold mb-6">
-              Confirm Asset Transfer
-            </FieldLegend>
-
-            <div className="space-y-6">
-              <Field>
-                <FieldLabel>Actual Pickup Date</FieldLabel>
-                <DatePickerInput2
                   value={formData.actualPickupDate || ""}
                   onChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      actualPickupDate: v,
-                    })
+                    setFormData({ ...formData, actualPickupDate: v })
                   }
                 />
               </Field>
@@ -391,10 +347,7 @@ export default function OrderWorkflow({
                 <TextInput
                   value={formData.vendorOrderId || ""}
                   onChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      vendorOrderId: v,
-                    })
+                    setFormData({ ...formData, vendorOrderId: v })
                   }
                 />
               </Field>
@@ -404,15 +357,12 @@ export default function OrderWorkflow({
                 <TextInput
                   value={formData.pickupContact || ""}
                   onChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      pickupContact: v,
-                    })
+                    setFormData({ ...formData, pickupContact: v })
                   }
                 />
               </Field>
 
-              <label className="flex items-center space-x-2">
+              <label className="flex gap-2">
                 <input
                   type="checkbox"
                   checked={custodyConfirmed}
@@ -420,53 +370,53 @@ export default function OrderWorkflow({
                     setCustodyConfirmed(e.target.checked)
                   }
                 />
-                <span>Custody transferred</span>
+                Custody confirmed
+              </label>
+            </div>
+          )}
+
+          {/* ---------------- STEP 3 ---------------- */}
+          {step.id === 3 && (
+            <div className="space-y-6">
+              <label className="flex gap-2">
+                <input
+                  type="checkbox"
+                  checked={orderCompleted}
+                  onChange={(e) =>
+                    setOrderCompleted(e.target.checked)
+                  }
+                />
+                Recycling completed
               </label>
 
-              <Button onClick={handleConfirm} disabled={!canConfirm}>
-                Confirm
-              </Button>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={(e) =>
+                  setPdfFile(e.target.files?.[0] || null)
+                }
+              />
             </div>
-          </FieldSet>
-        </div>
-      )}
-
-      <FieldSeparator />
-
-      {/* STEP 3 */}
-      {stepState >= 3 && (
-        <FieldSet>
-          <FieldLegend className="text-lg font-semibold mb-6">
-            Verify Recycling Completion
-          </FieldLegend>
-
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={orderCompleted}
-              onChange={(e) =>
-                setOrderCompleted(e.target.checked)
-              }
-            />
-            <span>Recycling completed</span>
-          </label>
-
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) =>
-              setPdfFile(e.target.files?.[0] || null)
-            }
-          />
+          )}
 
           <Button
-            onClick={handleComplete}
-            disabled={!canComplete}
+            className="mt-4"
+            disabled={!step.canSubmit()}
+            onClick={step.onSubmit}
           >
-            Complete
+            Continue
           </Button>
         </FieldSet>
-      )}
+      </div>
+    );
+  };
+
+  if (!orderId) return <p>Loading order...</p>;
+
+  return (
+    <div className="max-w-5xl mx-auto p-6 space-y-6">
+      <FieldSeparator />
+      {steps.map(renderStep)}
     </div>
   );
 }
