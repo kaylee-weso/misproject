@@ -205,14 +205,14 @@ export default function OrderFormPage() {
                   <div>
                     <span className="font-semibold">Scheduled Pickup Date:</span>
                     <div>{selectedOrder.scheduled_pickup_date
-                      ? new Date(selectedOrder.scheduled_pickup_date).toLocaleDateString()
+                      ? selectedOrder.scheduled_pickup_date?.split("T")[0]
                       : "N/A"}
                     </div>
                   </div>
                   <div>
                     <span className="font-semibold">Actual Pickup Date:</span>
                     <div>{selectedOrder.actual_pickup_date
-                      ? new Date(selectedOrder.actual_pickup_date).toLocaleDateString()
+                      ? selectedOrder.actual_pickup_date?.split("T")[0]
                       : "N/A"}
                     </div>
                   </div>
@@ -227,7 +227,7 @@ export default function OrderFormPage() {
                   <div>
                     <span className="font-semibold">Completed Date:</span>
                     <div>{selectedOrder.completed_date
-                      ? new Date(selectedOrder.completed_date).toLocaleDateString()
+                      ? selectedOrder.completed_date?.split("T")[0]
                       : "N/A"}
                     </div>
                   </div>
