@@ -91,8 +91,10 @@ export default function AddAssetPage() {
         assignedTo: formData.assignedTo ? Number(formData.assignedTo) : null,
         departmentId: Number(formData.department || null),
         locationId: Number(formData.location || null),
-        purchaseDate: new Date(formData.purchaseDate),
-      });
+        purchaseDate: formData.purchaseDate
+          ? new Date(formData.purchaseDate).toISOString().slice(0, 19).replace("T", " ")
+          : null,
+          });
 
 
       setFormSubmitted(true);
