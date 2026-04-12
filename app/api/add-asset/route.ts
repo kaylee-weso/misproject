@@ -20,9 +20,6 @@ export async function POST(req: Request) {
   try {
     const newAsset = await req.json();
 
-    newAsset.purchaseDate = new Date(newAsset.purchaseDate)
-        .toISOString()
-        .split("T")[0];
 
     console.log("Incoming asset:", newAsset);
 
