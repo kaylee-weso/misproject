@@ -16,7 +16,6 @@ import { useServerTable, Column } from "@/lib/hooks/useServerTable";
 
 import {
   Field,
-  FieldGroup,
   FieldLabel,
   FieldLegend,
   FieldSeparator,
@@ -242,132 +241,143 @@ export default function OrderWorkflow({
       {/* ================= STEP 1 ================= */}
       <div className={scheduleLocked ? "opacity-50 pointer-events-none" : ""}>
         <FieldSet>
-          <FieldLegend>Scheduled Pickup</FieldLegend>
+          <div className="flex-1 flex flex-col space-y-10 mt-8 bg-white rounded-xl shadow-sm p-6">
+            <FieldLegend className="text-lg font-semibold mb-6">Scheduled Pickup</FieldLegend>
 
-          <Field>
-            <FieldLabel>Company</FieldLabel>
-            <AppCombobox
-              options={Array.from(
-                new Set(workflowFields.facilities.map(f => f.Company))
-              ).map(c => ({ value: c, label: c }))}
-              value={formData.company || ""}
-              onChange={(val) => {
-                const selected = workflowFields.facilities.find(
-                  f => f.Company === val
-                );
+          
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <Field>
+                  <FieldLabel>Company</FieldLabel>
+                  <AppCombobox
+                    options={Array.from(
+                      new Set(workflowFields.facilities.map(f => f.Company))
+                    ).map(c => ({ value: c, label: c }))}
+                    value={formData.company || ""}
+                    onChange={(val) => {
+                      const selected = workflowFields.facilities.find(
+                        f => f.Company === val
+                      );
 
-                setFormData({
-                  ...formData,
-                  company: selected?.Company || "",
-                  address: "",
-                });
-              }}
-              filter={companyFilter}
-              setFilter={setCompanyFilter}
-              open={companyOpen}
-              setOpen={setCompanyOpen}
-            />
-          </Field>
+                      setFormData({
+                        ...formData,
+                        company: selected?.Company || "",
+                        address: "",
+                      });
+                    }}
+                    filter={companyFilter}
+                    setFilter={setCompanyFilter}
+                    open={companyOpen}
+                    setOpen={setCompanyOpen}
+                  />
+                </Field>
 
-          <Field>
-            <FieldLabel>Address</FieldLabel>
-            <AppCombobox
-              options={workflowFields.facilities
-                .filter(f => f.Company === formData.company)
-                .map(f => ({
-                  value: f.facility_id,
-                  label: f.Full_Address,
-                }))}
-              value={formData.address || ""}
-              onChange={(val) =>
-                setFormData({ ...formData, address: val })
-              }
-              disabled={!formData.company}
-              filter={addressFilter}
-              setFilter={setAddressFilter}
-              open={addressOpen}
-              setOpen={setAddressOpen}
-            />
-          </Field>
+                <Field>
+                  <FieldLabel>Address</FieldLabel>
+                  <AppCombobox
+                    options={workflowFields.facilities
+                      .filter(f => f.Company === formData.company)
+                      .map(f => ({
+                        value: f.facility_id,
+                        label: f.Full_Address,
+                      }))}
+                    value={formData.address || ""}
+                    onChange={(val) =>
+                      setFormData({ ...formData, address: val })
+                    }
+                    disabled={!formData.company}
+                    filter={addressFilter}
+                    setFilter={setAddressFilter}
+                    open={addressOpen}
+                    setOpen={setAddressOpen}
+                  />
+                </Field>
 
-          <Field>
-            <FieldLabel>Scheduled Pickup Date</FieldLabel>
-            <DatePickerInput2
-              value={formData.scheduledPickupDate || ""}
-              onChange={(v) =>
-                setFormData({ ...formData, scheduledPickupDate: v })
-              }
-            />
-          </Field>
+                <Field>
+                  <FieldLabel>Scheduled Pickup Date</FieldLabel>
+                  <DatePickerInput2
+                    value={formData.scheduledPickupDate || ""}
+                    onChange={(v) =>
+                      setFormData({ ...formData, scheduledPickupDate: v })
+                    }
+                  />
+                </Field>
+                </div>
+                <div className="h-full min-h-[300px]">
+                  <MapComponent />
+                </div>
+              </div>
+              <div className="mt-6">
+                <Button onClick={handleSchedule} disabled={!canSchedule}>
+                  Schedule
+                </Button>
+              </div>
+            </div>
+          </FieldSet>
+        </div>
 
-          <Button onClick={handleSchedule} disabled={!canSchedule}>
-            Schedule
-          </Button>
-
-          <MapComponent />
-        </FieldSet>
-      </div>
-
-      <FieldSeparator />
+        <FieldSeparator />
 
       {/* ================= STEP 2 ================= */}
       {showConfirm && (
         <div className={confirmLocked ? "opacity-50 pointer-events-none" : ""}>
           <FieldSet>
-            <FieldLegend>Confirm Asset Transfer</FieldLegend>
+            <div className="flex-1 flex flex-col space-y-10 mt-8 bg-white rounded-xl shadow-sm p-6">
+              <FieldLegend className="text-lg font-semibold mb-6">Confirm Asset Transfer</FieldLegend>
 
-            <Field>
-              <FieldLabel>Actual Pickup Date</FieldLabel>
-              <DatePickerInput2
-                value={formData.actualPickupDate || ""}
-                onChange={(v) =>
-                  setFormData({ ...formData, actualPickupDate: v })
-                }
-              />
-            </Field>
+              <Field>
+                <FieldLabel>Actual Pickup Date</FieldLabel>
+                <DatePickerInput2
+                  value={formData.actualPickupDate || ""}
+                  onChange={(v) =>
+                    setFormData({ ...formData, actualPickupDate: v })
+                  }
+                />
+              </Field>
 
-            <Field>
-              <FieldLabel>Vendor Order ID</FieldLabel>
-              <TextInput
-                value={formData.vendorOrderId || ""}
-                onChange={(v) =>
-                  setFormData({ ...formData, vendorOrderId: v })
-                }
-              />
-            </Field>
+              <Field>
+                <FieldLabel>Vendor Order ID</FieldLabel>
+                <TextInput
+                  value={formData.vendorOrderId || ""}
+                  onChange={(v) =>
+                    setFormData({ ...formData, vendorOrderId: v })
+                  }
+                />
+              </Field>
 
-            <Field>
-              <FieldLabel>Pickup Contact Name</FieldLabel>
-              <TextInput
-                value={formData.pickupContact || ""}
-                onChange={(v) =>
-                  setFormData({ ...formData, pickupContact: v })
-                }
-              />
-            </Field>
+              <Field>
+                <FieldLabel>Pickup Contact Name</FieldLabel>
+                <TextInput
+                  value={formData.pickupContact || ""}
+                  onChange={(v) =>
+                    setFormData({ ...formData, pickupContact: v })
+                  }
+                />
+              </Field>
 
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={custodyConfirmed}
-                onChange={(e) => setCustodyConfirmed(e.target.checked)}
-              />
-              <span>I confirm custody transfer</span>
-            </label>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={custodyConfirmed}
+                  onChange={(e) => setCustodyConfirmed(e.target.checked)}
+                />
+                <span>I confirm custody transfer</span>
+              </label>
 
-            <Field>
-              <FieldLabel>Notes</FieldLabel>
-              <TextInput
-                value={formData.notes || ""}
-                onChange={(v) =>
-                  setFormData({ ...formData, notes: v })
-                }
-              />
-            </Field>
+              <Field>
+                <FieldLabel>Notes</FieldLabel>
+                <TextInput
+                  value={formData.notes || ""}
+                  onChange={(v) =>
+                    setFormData({ ...formData, notes: v })
+                  }
+                />
+              </Field>
 
-            <Button onClick={handleConfirm} disabled={!canConfirm}>
-              Confirm
-            </Button>
+              <Button onClick={handleConfirm} disabled={!canConfirm}>
+                Confirm
+              </Button>
+            </div>
           </FieldSet>
         </div>
       )}
@@ -378,28 +388,30 @@ export default function OrderWorkflow({
       {showComplete && (
         <div className={completeLocked ? "opacity-50 pointer-events-none" : ""}>
           <FieldSet>
-            <FieldLegend>Verify Recycling Completion</FieldLegend>
+            <div className="flex-1 flex flex-col space-y-10 mt-8 bg-white rounded-xl shadow-sm p-6">
+              <FieldLegend className="text-lg font-semibold mb-6">Verify Recycling Completion</FieldLegend>
 
-            <label className="flex items-center space-x-2">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={orderCompleted}
+                  onChange={(e) => setOrderCompleted(e.target.checked)}
+                />
+                <span>Recycling completed</span>
+              </label>
+
               <input
-                type="checkbox"
-                checked={orderCompleted}
-                onChange={(e) => setOrderCompleted(e.target.checked)}
+                type="file"
+                accept="application/pdf"
+                onChange={(e) =>
+                  setPdfFile(e.target.files ? e.target.files[0] : null)
+                }
               />
-              <span>Recycling completed</span>
-            </label>
 
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={(e) =>
-                setPdfFile(e.target.files ? e.target.files[0] : null)
-              }
-            />
-
-            <Button onClick={handleComplete} disabled={!canComplete}>
-              Complete
-            </Button>
+              <Button onClick={handleComplete} disabled={!canComplete}>
+                Complete
+              </Button>
+            </div>
           </FieldSet>
         </div>
       )}
