@@ -28,6 +28,8 @@ export async function getFormData() {
 }
 
 export async function addAsset(data: any) {
+  console.log("SENDING POST TO API", data);
+
   const res = await fetch("/api/add-asset", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

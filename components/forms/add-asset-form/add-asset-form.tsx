@@ -135,12 +135,7 @@ export default function AddAssetForm({
     if (!window.confirm("Are you sure you want to add asset?")) return;
 
     // Call onSubmit prop
-    onSubmit(formData);
-
-    // Redirect
-    router.push("/inventory");
-  };
-
+    onSubmit(formData);};
   return (
     <div className="w-full max-w-2xl mx-auto">
       <form

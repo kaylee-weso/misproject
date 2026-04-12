@@ -196,4 +196,5 @@ export async function insertAsset({serialNumber, vendorId, assetTypeId, modelNam
     ]
 );
   return { modelId, assetId: assetResult.insertId };
+ 
 }
