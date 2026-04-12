@@ -86,13 +86,14 @@ export default function AddAssetPage() {
       await addAsset({
         serialNumber: formData.serialNumber,
         modelName: formData.modelName,
-        vendorId: Number(formData.vendor),
-        assetTypeId: Number(formData.assetType),
+        vendorId: Number(formData.vendor || null),
+        assetTypeId: Number(formData.assetType || null),
         assignedTo: formData.assignedTo ? Number(formData.assignedTo) : null,
-        departmentId: Number(formData.department),
-        locationId: Number(formData.location),
-        purchaseDate: formData.purchaseDate,
+        departmentId: Number(formData.department || null),
+        locationId: Number(formData.location || null),
+        purchaseDate: new Date(formData.purchaseDate),
       });
+
 
       setFormSubmitted(true);
       router.push("/inventory");

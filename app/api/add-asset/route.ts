@@ -17,20 +17,22 @@ export async function GET() {
     }
 
 export async function POST(req: Request) {
-    try {
-        const newAsset = await req.json();
-        await createAsset(newAsset);
-        return NextResponse.json({success: true});
-    }
-        catch (error) {
-            console.log("New asset insert failed:", error);
-            return NextResponse.json (
-                {error: "Failed to insert asset into HA table"},
-                {status: 500}
-            );
-        }
-    }
+  try {
+    const newAsset = await req.json();
 
+    console.log("Incoming asset:", newAsset);
+
+    await createAsset(newAsset);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("New asset insert failed:", error);
+    return NextResponse.json(
+      { error: "Failed to insert asset into HA table" },
+      { status: 500 }
+    );
+  }
+}
  
 
 
