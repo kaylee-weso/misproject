@@ -16,9 +16,6 @@ export async function getLifecycleReviewTable(
   let whereClauses: string[] = [];
   let values: any[] = [];
 
-  const LOCAL_NOW = "CONVERT_TZ(NOW(), 'UTC', 'America/Chicago')";
-  const LOCAL_DATE = `DATE(${LOCAL_NOW})`;
-  const LOCAL_LIFECYCLE_DATE = "DATE(CONVERT_TZ(ha.lifecycle_review_date, 'UTC', 'America/Chicago'))";
 
   // --- CATEGORY FILTER ---
   if (category) {
@@ -26,22 +23,22 @@ export async function getLifecycleReviewTable(
       case "upcoming":
         whereClauses.push(`
           ha.lifecycle_review_date IS NOT NULL
-          AND ${LOCAL_LIFECYCLE_DATE} > ${LOCAL_DATE}
-          AND ${LOCAL_LIFECYCLE_DATE} <= DATE_ADD(${LOCAL_DATE}, INTERVAL 10 DAY)
+          AND DATE(ha.lifecycle_review_date)> CURDATE()
+          AND DATE(ha.lifecycle_review_date) <= DATE_ADD(CURDATE(), INTERVAL 10 DAY)
         `);
         break;
 
       case "today":
         whereClauses.push(`
           ha.lifecycle_review_date IS NOT NULL
-          AND ${LOCAL_LIFECYCLE_DATE} = ${LOCAL_DATE}
+          AND DATE(ha.lifecycle_review_date) = CURDATE()
         `);
         break;
 
       case "past":
         whereClauses.push(`
           ha.lifecycle_review_date IS NOT NULL
-          AND ${LOCAL_LIFECYCLE_DATE} < ${LOCAL_DATE}
+          AND DATE(ha.lifecycle_review_date) < CURDATE()
         `);
         break;
     }
